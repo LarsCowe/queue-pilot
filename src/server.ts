@@ -1,8 +1,12 @@
+import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RabbitMQClient } from "./rabbitmq/client.js";
 import { SchemaValidator } from "./schemas/validator.js";
 import type { SchemaEntry } from "./schemas/types.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 import { listSchemas } from "./tools/list-schemas.js";
 import { getSchema } from "./tools/get-schema.js";
 import { validateMessage } from "./tools/validate-message.js";
@@ -29,7 +33,7 @@ export function createServer(config: ServerConfig): McpServer {
 
   const server = new McpServer({
     name: "queue-pilot",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   server.tool("list_schemas", "List all loaded message schemas", {}, async () => {

@@ -1,8 +1,12 @@
+import { createRequire } from "module";
 import { describe, it, expect } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
 import type { SchemaEntry } from "./schemas/types.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 const testSchema: SchemaEntry = {
   name: "order.created",
@@ -44,6 +48,16 @@ async function createTestClient(): Promise<Client> {
 }
 
 describe("MCP Server", () => {
+  it("reports the version from package.json", async () => {
+    const client = await createTestClient();
+    const serverVersion = client.getServerVersion();
+
+    expect(serverVersion).toEqual({
+      name: "queue-pilot",
+      version: pkg.version,
+    });
+  });
+
   it("registers all expected tools", async () => {
     const client = await createTestClient();
     const { tools } = await client.listTools();
