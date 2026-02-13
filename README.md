@@ -44,8 +44,7 @@ Add to your Claude Code MCP settings:
     "queue-pilot": {
       "command": "npx",
       "args": [
-        "tsx",
-        "/path/to/queue-pilot/src/index.ts",
+        "queue-pilot",
         "--schemas", "./schemas",
         "--rabbitmq-url", "http://localhost:15672",
         "--rabbitmq-user", "guest",
@@ -55,6 +54,29 @@ Add to your Claude Code MCP settings:
   }
 }
 ```
+
+<details>
+<summary>Development (running from source)</summary>
+
+```json
+{
+  "mcpServers": {
+    "queue-pilot": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "src/index.ts",
+        "--schemas", "./schemas",
+        "--rabbitmq-url", "http://localhost:15672",
+        "--rabbitmq-user", "guest",
+        "--rabbitmq-pass", "guest"
+      ]
+    }
+  }
+}
+```
+
+</details>
 
 ### 3. Use with Claude
 

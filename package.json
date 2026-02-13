@@ -17,7 +17,16 @@
     "test:watch": "vitest --exclude src/integration.test.ts",
     "test:coverage": "vitest run --coverage --exclude src/integration.test.ts",
     "lint": "tsc --noEmit",
-    "test:integration": "vitest run src/integration.test.ts"
+    "test:integration": "vitest run src/integration.test.ts",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LarsCowe/queue-pilot.git"
+  },
+  "homepage": "https://github.com/LarsCowe/queue-pilot#readme",
+  "bugs": {
+    "url": "https://github.com/LarsCowe/queue-pilot/issues"
   },
   "keywords": [
     "mcp",
