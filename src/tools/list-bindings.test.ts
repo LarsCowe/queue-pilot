@@ -26,4 +26,14 @@ describe("listBindings", () => {
       routing_key: "order.#",
     });
   });
+
+  it("returns empty list when no bindings exist", async () => {
+    const client = {
+      listBindings: vi.fn().mockResolvedValue([]),
+    } as unknown as RabbitMQClient;
+
+    const result = await listBindings(client, "/");
+
+    expect(result.bindings).toEqual([]);
+  });
 });

@@ -149,4 +149,40 @@ describe("SchemaValidator", () => {
 
     expect(schema).toBeUndefined();
   });
+
+  it("dispatches validation to the correct schema when multiple are loaded", () => {
+    const orderSchema: SchemaEntry = {
+      name: "order.created",
+      version: "1.0.0",
+      title: "Order Created",
+      description: "Emitted when a new order is placed",
+      schema: {
+        $id: "order.created",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        title: "Order Created",
+        description: "Emitted when a new order is placed",
+        version: "1.0.0",
+        type: "object",
+        required: ["orderId", "amount"],
+        properties: {
+          orderId: { type: "string" },
+          amount: { type: "number" },
+        },
+      },
+    };
+
+    const multiValidator = new SchemaValidator([registrationSchema, orderSchema]);
+
+    const orderResult = multiValidator.validate("order.created", {
+      orderId: "ORD-001",
+      amount: 49.99,
+    });
+    expect(orderResult.valid).toBe(true);
+
+    const crossResult = multiValidator.validate("registration.created", {
+      orderId: "ORD-001",
+      amount: 49.99,
+    });
+    expect(crossResult.valid).toBe(false);
+  });
 });

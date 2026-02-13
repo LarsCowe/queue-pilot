@@ -118,4 +118,27 @@ describe("MCP Server", () => {
     expect(parsed.valid).toBe(false);
     expect(parsed.errors.length).toBeGreaterThan(0);
   });
+
+  it("returns isError for get_schema with unknown name", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "get_schema",
+      arguments: { name: "nonexistent.schema" },
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  it("returns isError for validate_message with unknown schema", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "validate_message",
+      arguments: {
+        schemaName: "nonexistent.schema",
+        message: JSON.stringify({ data: "test" }),
+      },
+    });
+
+    expect(result.isError).toBe(true);
+  });
 });

@@ -20,4 +20,14 @@ describe("listExchanges", () => {
       durable: true,
     });
   });
+
+  it("returns empty list when no exchanges exist", async () => {
+    const client = {
+      listExchanges: vi.fn().mockResolvedValue([]),
+    } as unknown as RabbitMQClient;
+
+    const result = await listExchanges(client, "/");
+
+    expect(result.exchanges).toEqual([]);
+  });
 });

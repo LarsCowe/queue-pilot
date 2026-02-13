@@ -124,4 +124,30 @@ describe("loadSchemas", () => {
     const names = result.map((r) => r.name).sort();
     expect(names).toEqual(["payment.processed", "user.registered"]);
   });
+
+  it("uses default values when version, title, and description are missing", async () => {
+    const schema = {
+      $id: "minimal.event",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+    };
+    writeFileSync(
+      join(tempDir, "minimal.event.json"),
+      JSON.stringify(schema, null, 2),
+    );
+
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("minimal.event");
+    expect(result[0].version).toBe("0.0.0");
+    expect(result[0].title).toBe("minimal.event");
+    expect(result[0].description).toBe("");
+  });
+
+  it("throws when directory does not exist", async () => {
+    const nonExistentDir = join(tempDir, "does-not-exist");
+
+    await expect(loadSchemas(nonExistentDir)).rejects.toThrow();
+  });
 });

@@ -24,6 +24,27 @@ const orderSchema: SchemaEntry = {
   },
 };
 
+const paymentSchema: SchemaEntry = {
+  name: "payment.processed",
+  version: "1.0.0",
+  title: "Payment Processed",
+  description: "Emitted when a payment has been processed",
+  schema: {
+    $id: "payment.processed",
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: "Payment Processed",
+    description: "Emitted when a payment has been processed",
+    version: "1.0.0",
+    type: "object",
+    required: ["invoiceId", "amount", "currency"],
+    properties: {
+      invoiceId: { type: "string" },
+      amount: { type: "number" },
+      currency: { type: "string" },
+    },
+  },
+};
+
 function mockClient(messages: unknown[]): RabbitMQClient {
   return {
     peekMessages: vi.fn().mockResolvedValue(messages),
@@ -183,5 +204,129 @@ describe("inspectQueue", () => {
       orderId: "ORD-001",
       amount: 49.99,
     });
+  });
+
+  it("validates mixed message types against their respective schemas", async () => {
+    const client = mockClient([
+      {
+        payload: '{"orderId":"ORD-001","amount":49.99}',
+        payload_encoding: "string",
+        properties: { type: "order.created" },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+      {
+        payload: '{"invoiceId":"INV-001","amount":99.50,"currency":"EUR"}',
+        payload_encoding: "string",
+        properties: { type: "payment.processed" },
+        exchange: "events",
+        routing_key: "payment.processed",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema, paymentSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "mixed-events", 5);
+
+    expect(result.messages[0].validation.schemaName).toBe("order.created");
+    expect(result.messages[0].validation.valid).toBe(true);
+    expect(result.messages[1].validation.schemaName).toBe("payment.processed");
+    expect(result.messages[1].validation.valid).toBe(true);
+    expect(result.summary).toEqual({
+      total: 2,
+      valid: 2,
+      invalid: 0,
+      noSchema: 0,
+    });
+  });
+
+  it("handles malformed non-JSON payloads gracefully", async () => {
+    const client = mockClient([
+      {
+        payload: "this is not valid JSON",
+        payload_encoding: "string",
+        properties: { type: "order.created" },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.messages[0].parsedPayload).toBe("this is not valid JSON");
+    expect(result.messages[0].validation.valid).toBe(false);
+  });
+
+  it("returns correct summary for an empty queue", async () => {
+    const client = mockClient([]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "empty-queue", 5);
+
+    expect(result.messages).toEqual([]);
+    expect(result.count).toBe(0);
+    expect(result.summary).toEqual({
+      total: 0,
+      valid: 0,
+      invalid: 0,
+      noSchema: 0,
+    });
+  });
+
+  it("passes through all message properties", async () => {
+    const client = mockClient([
+      {
+        payload: '{"orderId":"ORD-001","amount":49.99}',
+        payload_encoding: "string",
+        properties: {
+          type: "order.created",
+          correlation_id: "corr-abc-123",
+          message_id: "msg-def-456",
+          timestamp: 1705312200,
+          headers: { "x-retry-count": 2, source: "billing-service" },
+        },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.messages[0].properties).toEqual({
+      type: "order.created",
+      correlation_id: "corr-abc-123",
+      message_id: "msg-def-456",
+      timestamp: 1705312200,
+      headers: { "x-retry-count": 2, source: "billing-service" },
+    });
+  });
+
+  it("includes the queue name in the result", async () => {
+    const client = mockClient([]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "payments-dlq", 5);
+
+    expect(result.queue).toBe("payments-dlq");
+  });
+
+  it("propagates errors from the RabbitMQ client", async () => {
+    const client = {
+      peekMessages: vi.fn().mockRejectedValue(new Error("Connection refused")),
+    } as unknown as RabbitMQClient;
+    const validator = new SchemaValidator([orderSchema]);
+
+    await expect(
+      inspectQueue(client, validator, "/", "orders", 5),
+    ).rejects.toThrow("Connection refused");
   });
 });
