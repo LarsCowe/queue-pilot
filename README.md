@@ -1,5 +1,8 @@
 # Queue Pilot
 
+[![npm version](https://img.shields.io/npm/v/queue-pilot)](https://www.npmjs.com/package/queue-pilot)
+[![license](https://img.shields.io/npm/l/queue-pilot)](LICENSE)
+
 MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation.
 
 Designed for integration projects where multiple teams communicate via RabbitMQ: inspect queues, view messages, and validate payloads against agreed-upon schemas — all from your AI assistant.

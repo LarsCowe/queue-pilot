@@ -1,10 +1,10 @@
 {
   "name": "queue-pilot",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation",
   "type": "module",
   "bin": {
-    "queue-pilot": "./dist/index.js"
+    "queue-pilot": "dist/index.js"
   },
   "main": "./dist/index.js",
   "exports": {

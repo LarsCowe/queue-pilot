@@ -10,6 +10,9 @@
 - Integration tests for write operations
 - `PublishMessageBody`, `PublishResponse`, `PurgeResponse` types
 
+### Fixed
+- `purge_queue` now handles RabbitMQ 4's 204 No Content response correctly
+
 ### Changed
 - Extracted `rawRequest` in RabbitMQ client (internal refactor)
 - README updated with write tool docs and examples
