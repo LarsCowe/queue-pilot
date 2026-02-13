@@ -1,10 +1,15 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { createRequire } from "module";
 import type { SchemaDefinition, SchemaEntry, ValidationResult } from "./types.js";
 
+interface AjvInstance {
+  addSchema(schema: Record<string, unknown>, key: string): void;
+  validate(schemaKeyRef: string, data: unknown): boolean;
+  errors: Array<{ instancePath: string; message?: string }> | null;
+}
+
 const require = createRequire(import.meta.url);
-const Ajv = require("ajv").default ?? require("ajv");
-const addFormats = require("ajv-formats").default ?? require("ajv-formats");
+const AjvConstructor = (require("ajv").default ?? require("ajv")) as new (opts: { allErrors: boolean }) => AjvInstance;
+const addFormats = (require("ajv-formats").default ?? require("ajv-formats")) as (ajv: AjvInstance) => void;
 
 const JSON_SCHEMA_DRAFT07_KEYWORDS = new Set([
   "$id",
@@ -66,12 +71,11 @@ function stripNonStandardKeywords(schema: SchemaDefinition): Record<string, unkn
 }
 
 export class SchemaValidator {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly ajv: any;
+  private readonly ajv: AjvInstance;
   private readonly schemas: Map<string, SchemaEntry>;
 
   constructor(schemas: SchemaEntry[]) {
-    this.ajv = new Ajv({ allErrors: true });
+    this.ajv = new AjvConstructor({ allErrors: true });
     addFormats(this.ajv);
     this.schemas = new Map();
 
@@ -95,18 +99,13 @@ export class SchemaValidator {
       };
     }
 
-    const valid = this.ajv.validate(schemaName, message) as boolean;
+    const valid = this.ajv.validate(schemaName, message);
 
     if (valid) {
       return { valid: true, errors: [] };
     }
 
-    const errors = (
-      (this.ajv.errors ?? []) as Array<{
-        instancePath: string;
-        message?: string;
-      }>
-    ).map((err) => ({
+    const errors = (this.ajv.errors ?? []).map((err) => ({
       path: err.instancePath || "/",
       message: err.message ?? "Unknown validation error",
     }));

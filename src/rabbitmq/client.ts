@@ -95,8 +95,8 @@ export class RabbitMQClient {
     const encodedQueue = encodeURIComponent(queue);
 
     const messages = await this.peekMessages(vhost, queue, 1);
-    const messageCount =
-      messages.length > 0 ? messages[0].message_count + 1 : 0;
+    const first = messages[0];
+    const messageCount = first !== undefined ? first.message_count + 1 : 0;
 
     await this.requestVoid(
       `/api/queues/${encodedVhost}/${encodedQueue}/contents`,

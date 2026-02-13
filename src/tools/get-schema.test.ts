@@ -30,10 +30,9 @@ describe("getSchema", () => {
 
     expect(result.found).toBe(true);
     expect(result.name).toBe("order.created");
+    if (!result.found) throw new Error("expected found to be true");
     expect(result.schema).toBeDefined();
-    expect((result.schema as Record<string, unknown>).required).toEqual([
-      "orderId",
-    ]);
+    expect(result.schema.required).toEqual(["orderId"]);
   });
 
   it("returns an error for an unknown schema", () => {
@@ -42,6 +41,7 @@ describe("getSchema", () => {
     const result = getSchema(validator, "nonexistent.event");
 
     expect(result.found).toBe(false);
+    if (result.found) throw new Error("expected found to be false");
     expect(result.error).toContain("nonexistent.event");
     expect(result.error).toContain("not found");
   });

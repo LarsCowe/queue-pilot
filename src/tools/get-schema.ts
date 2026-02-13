@@ -1,11 +1,8 @@
 import type { SchemaValidator } from "../schemas/validator.js";
 
-export interface GetSchemaResult {
-  found: boolean;
-  name: string;
-  schema?: Record<string, unknown>;
-  error?: string;
-}
+export type GetSchemaResult =
+  | { found: true; name: string; schema: Record<string, unknown> }
+  | { found: false; name: string; error: string };
 
 export function getSchema(
   validator: SchemaValidator,

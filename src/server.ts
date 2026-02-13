@@ -27,6 +27,10 @@ export interface ServerConfig {
   rabbitmqPass: string;
 }
 
+const jsonResponse = (data: unknown) => ({
+  content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+});
+
 export function createServer(config: ServerConfig): McpServer {
   const validator = new SchemaValidator(config.schemas);
   const client = new RabbitMQClient({
@@ -42,7 +46,7 @@ export function createServer(config: ServerConfig): McpServer {
 
   server.tool("list_schemas", "List all loaded message schemas", {}, async () => {
     const result = listSchemas(validator);
-    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    return jsonResponse(result);
   });
 
   server.tool(
@@ -51,9 +55,7 @@ export function createServer(config: ServerConfig): McpServer {
     { name: z.string().describe("Schema name (e.g. 'order.created')") },
     async ({ name }) => {
       const result = getSchema(validator, name);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -66,9 +68,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ schemaName, message }) => {
       const result = validateMessage(validator, schemaName, message);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -83,7 +83,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ vhost }) => {
       const result = await listQueues(client, vhost);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return jsonResponse(result);
     },
   );
 
@@ -106,7 +106,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ queue, count, vhost }) => {
       const result = await peekMessages(client, vhost, queue, count);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return jsonResponse(result);
     },
   );
 
@@ -129,7 +129,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ queue, count, vhost }) => {
       const result = await inspectQueue(client, validator, vhost, queue, count);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return jsonResponse(result);
     },
   );
 
@@ -144,7 +144,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ vhost }) => {
       const result = await listExchanges(client, vhost);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return jsonResponse(result);
     },
   );
 
@@ -159,7 +159,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ vhost }) => {
       const result = await listBindings(client, vhost);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return jsonResponse(result);
     },
   );
 
@@ -201,9 +201,7 @@ export function createServer(config: ServerConfig): McpServer {
         validate,
         vhost,
       });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -219,9 +217,7 @@ export function createServer(config: ServerConfig): McpServer {
     },
     async ({ queue, vhost }) => {
       const result = await purgeQueue(client, vhost, queue);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -250,9 +246,7 @@ export function createServer(config: ServerConfig): McpServer {
         auto_delete,
         vhost,
       });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
@@ -278,9 +272,7 @@ export function createServer(config: ServerConfig): McpServer {
         routing_key,
         vhost,
       });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      return jsonResponse(result);
     },
   );
 
