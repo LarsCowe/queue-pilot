@@ -407,4 +407,213 @@ describe("RabbitMQClient", () => {
       "vhost must not be empty",
     );
   });
+
+  it("creates an exchange with PUT method", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.createExchange("/", "order-events", {
+      type: "topic",
+      durable: true,
+      auto_delete: false,
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/exchanges/%2F/order-events",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ type: "topic", durable: true, auto_delete: false }),
+      }),
+    );
+  });
+
+  it("deletes a queue with DELETE method", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.deleteQueue("/", "order-events");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/order-events",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("deletes an exchange with DELETE method", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.deleteExchange("/", "order-events");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/exchanges/%2F/order-events",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("deletes a binding with properties key in URL", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.deleteBinding("/", "events", "orders", "~");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/bindings/%2F/e/events/q/orders/~",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("fetches cluster overview", async () => {
+    const overview = {
+      cluster_name: "rabbit@localhost",
+      rabbitmq_version: "3.13.2",
+      erlang_version: "26.2.5",
+      message_stats: { publish: 100, deliver: 90 },
+      queue_totals: { messages: 10, messages_ready: 7, messages_unacknowledged: 3 },
+      object_totals: { queues: 5, exchanges: 8, connections: 2, consumers: 3 },
+      node: "rabbit@localhost",
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => overview,
+    });
+
+    const result = await client.getOverview();
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/overview",
+      expect.any(Object),
+    );
+    expect(result).toEqual(overview);
+  });
+
+  it("checks health without throwing on 503", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        status: "failed",
+        reason: "There are alarms in effect in the cluster",
+      }),
+    });
+
+    const result = await client.checkHealth();
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/health/checks/alarms",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: expect.stringContaining("Basic"),
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      status: "failed",
+      reason: "There are alarms in effect in the cluster",
+    });
+  });
+
+  it("checks health returns ok for healthy broker", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "ok" }),
+    });
+
+    const result = await client.checkHealth();
+
+    expect(result).toEqual({ status: "ok" });
+  });
+
+  it("fetches detailed queue information", async () => {
+    const queueDetail = {
+      name: "order-events",
+      vhost: "/",
+      state: "running",
+      messages_ready: 5,
+      messages_unacknowledged: 2,
+      consumers: 3,
+      consumer_utilisation: 0.75,
+      memory: 65536,
+      message_stats: { publish: 200, deliver: 195 },
+      policy: null,
+      arguments: {},
+      node: "rabbit@node-1",
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => queueDetail,
+    });
+
+    const result = await client.getQueue("/", "order-events");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/order-events",
+      expect.any(Object),
+    );
+    expect(result).toEqual(queueDetail);
+  });
+
+  it("lists consumers for a vhost", async () => {
+    const consumers = [
+      {
+        queue: { name: "orders" },
+        consumer_tag: "ctag-1",
+        channel_details: { connection_name: "app:5672" },
+        ack_required: true,
+        prefetch_count: 10,
+      },
+    ];
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => consumers,
+    });
+
+    const result = await client.listConsumers("/");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/consumers/%2F",
+      expect.any(Object),
+    );
+    expect(result).toEqual(consumers);
+  });
+
+  it("lists all connections", async () => {
+    const connections = [
+      {
+        name: "172.17.0.3:43210 -> 172.17.0.2:5672",
+        user: "guest",
+        state: "running",
+        channels: 1,
+        connected_at: 1700000000000,
+        client_properties: { connection_name: "my-app" },
+        peer_host: "172.17.0.3",
+        peer_port: 43210,
+      },
+    ];
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => connections,
+    });
+
+    const result = await client.listConnections();
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/connections",
+      expect.any(Object),
+    );
+    expect(result).toEqual(connections);
+  });
 });

@@ -7,6 +7,11 @@ import type {
   PublishMessageBody,
   PublishResponse,
   PurgeResponse,
+  OverviewResponse,
+  HealthCheckResponse,
+  QueueDetail,
+  ConsumerInfo,
+  ConnectionInfo,
 } from "./types.js";
 
 function encodeVhost(vhost: string): string {
@@ -141,5 +146,72 @@ export class RabbitMQClient {
         body: JSON.stringify(body),
       },
     );
+  }
+
+  async createExchange(
+    vhost: string,
+    exchange: string,
+    options: { type: string; durable: boolean; auto_delete: boolean },
+  ): Promise<void> {
+    return this.requestVoid(
+      `/api/exchanges/${encodeVhost(vhost)}/${encodeURIComponent(exchange)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(options),
+      },
+    );
+  }
+
+  async deleteQueue(vhost: string, queue: string): Promise<void> {
+    return this.requestVoid(
+      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async deleteExchange(vhost: string, exchange: string): Promise<void> {
+    return this.requestVoid(
+      `/api/exchanges/${encodeVhost(vhost)}/${encodeURIComponent(exchange)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async deleteBinding(
+    vhost: string,
+    exchange: string,
+    queue: string,
+    propertiesKey: string,
+  ): Promise<void> {
+    return this.requestVoid(
+      `/api/bindings/${encodeVhost(vhost)}/e/${encodeURIComponent(exchange)}/q/${encodeURIComponent(queue)}/${encodeURIComponent(propertiesKey)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async getOverview(): Promise<OverviewResponse> {
+    return this.request<OverviewResponse>("/api/overview");
+  }
+
+  async checkHealth(): Promise<HealthCheckResponse> {
+    const response = await fetch(`${this.baseUrl}/api/health/checks/alarms`, {
+      headers: this.headers(),
+    });
+    return response.json() as Promise<HealthCheckResponse>;
+  }
+
+  async getQueue(vhost: string, queue: string): Promise<QueueDetail> {
+    return this.request<QueueDetail>(
+      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}`,
+    );
+  }
+
+  async listConsumers(vhost: string): Promise<ConsumerInfo[]> {
+    return this.request<ConsumerInfo[]>(
+      `/api/consumers/${encodeVhost(vhost)}`,
+    );
+  }
+
+  async listConnections(): Promise<ConnectionInfo[]> {
+    return this.request<ConnectionInfo[]>("/api/connections");
   }
 }

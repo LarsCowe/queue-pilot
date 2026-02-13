@@ -11,6 +11,7 @@ describe("listBindings", () => {
           destination: "orders",
           destination_type: "queue",
           routing_key: "order.#",
+          properties_key: "~",
           vhost: "/",
         },
       ]),
@@ -24,6 +25,7 @@ describe("listBindings", () => {
       destination: "orders",
       destination_type: "queue",
       routing_key: "order.#",
+      properties_key: "~",
     });
   });
 

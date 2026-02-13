@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0] — 2026-02-13
+
+### Added
+- `create_exchange` tool — create exchanges with type/durable/auto_delete options
+- `delete_queue` tool — delete a queue
+- `delete_exchange` tool — delete an exchange
+- `delete_binding` tool — delete a binding by exchange/queue/properties_key
+- `get_overview` tool — cluster overview with version info, message rates, object totals
+- `check_health` tool — broker health check (returns ok/failed without throwing on 503)
+- `get_queue` tool — detailed queue info including consumers, memory, message stats
+- `list_consumers` tool — list consumers with queue, tag, connection, prefetch details
+- `list_connections` tool — list client connections with user, state, channel count
+- MCP Resources — each loaded schema exposed as a readable `schema:///` resource
+- MCP Prompts — `debug-flow`, `health-report`, `schema-compliance` workflow templates
+- `OverviewResponse`, `HealthCheckResponse`, `QueueDetail`, `ConsumerInfo`, `ConnectionInfo` types
+- `properties_key` field added to `BindingInfo` and `list_bindings` output
+
+### Changed
+- Tool count increased from 12 to 21
+
 ## [0.2.4] — 2026-02-13
 
 ### Fixed

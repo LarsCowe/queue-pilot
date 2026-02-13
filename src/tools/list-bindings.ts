@@ -6,6 +6,7 @@ export interface ListBindingsResult {
     destination: string;
     destination_type: string;
     routing_key: string;
+    properties_key: string;
   }>;
 }
 
@@ -21,6 +22,7 @@ export async function listBindings(
       destination: b.destination,
       destination_type: b.destination_type,
       routing_key: b.routing_key,
+      properties_key: b.properties_key,
     })),
   };
 }
