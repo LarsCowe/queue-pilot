@@ -1,6 +1,10 @@
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
+/* eslint-disable @typescript-eslint/no-require-imports */
+import { createRequire } from "module";
 import type { SchemaDefinition, SchemaEntry, ValidationResult } from "./types.js";
+
+const require = createRequire(import.meta.url);
+const Ajv = require("ajv").default ?? require("ajv");
+const addFormats = require("ajv-formats").default ?? require("ajv-formats");
 
 const CUSTOM_KEYWORDS = new Set(["version"]);
 
@@ -15,7 +19,8 @@ function stripCustomKeywords(schema: SchemaDefinition): Record<string, unknown> 
 }
 
 export class SchemaValidator {
-  private readonly ajv: Ajv;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly ajv: any;
   private readonly schemas: Map<string, SchemaEntry>;
 
   constructor(schemas: SchemaEntry[]) {
@@ -43,13 +48,18 @@ export class SchemaValidator {
       };
     }
 
-    const valid = this.ajv.validate(schemaName, message);
+    const valid = this.ajv.validate(schemaName, message) as boolean;
 
     if (valid) {
       return { valid: true, errors: [] };
     }
 
-    const errors = (this.ajv.errors ?? []).map((err) => ({
+    const errors = (
+      (this.ajv.errors ?? []) as Array<{
+        instancePath: string;
+        message?: string;
+      }>
+    ).map((err) => ({
       path: err.instancePath || "/",
       message: err.message ?? "Unknown validation error",
     }));

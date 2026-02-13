@@ -1,0 +1,25 @@
+{
+  "$id": "registration.created",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Registration Created",
+  "description": "Emitted when a person registers for a session",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["messageId", "correlationId", "sourceSystem", "timestamp", "payload"],
+  "properties": {
+    "messageId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string" },
+    "sourceSystem": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "required": ["personId", "sessionId", "name", "email"],
+      "properties": {
+        "personId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" }
+      }
+    }
+  }
+}
