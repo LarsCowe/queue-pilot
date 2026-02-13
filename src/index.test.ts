@@ -58,6 +58,13 @@ describe("parseArgs", () => {
     expect(output).toContain("--rabbitmq-url");
   });
 
+  it("mentions init subcommand in help text", () => {
+    expect(() => parseArgs(["--help"])).toThrow("process.exit");
+
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+    expect(output).toContain("init");
+  });
+
   it("documents environment variables in help text", () => {
     expect(() => parseArgs(["--help"])).toThrow("process.exit");
 
@@ -147,11 +154,11 @@ describe("parseArgs", () => {
     expect(result.rabbitmqPass).toBe("cli-secret");
   });
 
-  it("ignores unknown flags", () => {
-    vi.restoreAllMocks();
-    const result = parseArgs(["--schemas", "/tmp/schemas", "--unknown", "value"]);
+  it("warns on unrecognized flags", () => {
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--rabbit-url", "http://example.com"]);
     expect(result.schemas).toBe("/tmp/schemas");
-    expect(result.rabbitmqUrl).toBe("http://localhost:15672");
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+    expect(output).toContain("--rabbit-url");
   });
 
   it("exits 1 when --schemas value is another flag", () => {

@@ -4,7 +4,14 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadSchemas } from "./schemas/loader.js";
+import { RabbitMQClient } from "./rabbitmq/client.js";
 import { createServer } from "./server.js";
+import { handleInit } from "./init.js";
+import {
+  checkNodeVersion,
+  checkSchemaCount,
+  checkRabbitMQConnectivity,
+} from "./startup.js";
 import { VERSION } from "./version.js";
 
 export interface CliArgs {
@@ -17,6 +24,10 @@ export interface CliArgs {
 const HELP_TEXT = `Queue Pilot - MCP server for RabbitMQ message inspection and schema validation
 
 Usage: queue-pilot --schemas <directory> [options]
+       queue-pilot init --schemas <directory> [--client <name>]
+
+Commands:
+  init                   Generate MCP client configuration (run 'queue-pilot init --help' for details)
 
 Options:
   --schemas <dir>        Directory containing JSON Schema files (required)
@@ -83,6 +94,13 @@ export function parseArgs(argv: string[]): CliArgs {
         args.rabbitmqPass = value;
         break;
       }
+      default: {
+        const arg = argv[i];
+        if (arg?.startsWith("--")) {
+          process.stderr.write(`Warning: unknown argument '${arg}'\n`);
+        }
+        break;
+      }
     }
   }
 
@@ -100,6 +118,14 @@ export function parseArgs(argv: string[]): CliArgs {
 }
 
 async function main(): Promise<void> {
+  const nodeCheck = checkNodeVersion(process.version);
+  if (!nodeCheck.ok) {
+    process.stderr.write(
+      `Error: Node.js >= ${nodeCheck.required} required (current: ${nodeCheck.current})\n`,
+    );
+    process.exit(1);
+  }
+
   const args = parseArgs(process.argv.slice(2));
 
   process.stderr.write(`Queue Pilot starting...\n`);
@@ -107,6 +133,27 @@ async function main(): Promise<void> {
 
   const schemas = await loadSchemas(args.schemas);
   process.stderr.write(`Loaded ${schemas.length} schema(s)\n`);
+
+  const schemaCheck = checkSchemaCount(schemas.length);
+  if (schemaCheck.warning) {
+    process.stderr.write(`Warning: ${schemaCheck.warning}\n`);
+  }
+
+  const client = new RabbitMQClient({
+    url: args.rabbitmqUrl,
+    username: args.rabbitmqUser,
+    password: args.rabbitmqPass,
+  });
+  const rabbitCheck = await checkRabbitMQConnectivity(() =>
+    client.checkHealth(),
+  );
+  if (rabbitCheck.reachable) {
+    process.stderr.write(`RabbitMQ: ${rabbitCheck.message}\n`);
+  } else {
+    process.stderr.write(
+      `Warning: RabbitMQ not reachable (${rabbitCheck.message}) — server will start but queue tools will fail\n`,
+    );
+  }
 
   const server = createServer({
     schemas,
@@ -126,9 +173,14 @@ const isEntryPoint =
   resolve(process.argv[1] ?? "") === resolve(fileURLToPath(import.meta.url));
 
 if (isEntryPoint) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    process.stderr.write(`Fatal error: ${message}\n`);
-    process.exit(1);
-  });
+  if (process.argv[2] === "init") {
+    handleInit(process.argv.slice(3));
+  } else {
+    main().catch((error: unknown) => {
+      const message =
+        error instanceof Error ? error.stack ?? error.message : String(error);
+      process.stderr.write(`Fatal error: ${message}\n`);
+      process.exit(1);
+    });
+  }
 }
