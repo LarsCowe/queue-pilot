@@ -149,9 +149,12 @@ describe("RabbitMQClient", () => {
       ok: false,
       status: 401,
       statusText: "Unauthorized",
+      text: async () => "Not authorised",
     });
 
-    await expect(client.listQueues("/")).rejects.toThrow("401");
+    await expect(client.listQueues("/")).rejects.toThrow(
+      "RabbitMQ API error: 401 Unauthorized — Not authorised",
+    );
   });
 
   it("encodes vhost correctly (/ becomes %2F)", async () => {
@@ -189,40 +192,34 @@ describe("RabbitMQClient", () => {
   });
 
   it("purges a queue and returns the message count", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          {
-            payload: '{"test":true}',
-            payload_encoding: "string",
-            properties: {},
-            exchange: "",
-            routing_key: "orders",
-            message_count: 41,
-            redelivered: false,
-          },
-        ],
-      })
-      .mockResolvedValueOnce({ ok: true });
-
-    globalThis.fetch = mockFetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ message_count: 42 }),
+    });
 
     const result = await client.purgeQueue("/", "orders");
 
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      1,
-      "http://localhost:15672/api/queues/%2F/orders/get",
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      2,
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       "http://localhost:15672/api/queues/%2F/orders/contents",
       expect.objectContaining({ method: "DELETE" }),
     );
-    expect(result).toEqual({ messages_purged: 42 });
+    expect(result).toEqual({ message_count: 42 });
+  });
+
+  it("purges an empty queue and returns zero", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ message_count: 0 }),
+    });
+
+    const result = await client.purgeQueue("/", "empty-queue");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/empty-queue/contents",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(result).toEqual({ message_count: 0 });
   });
 
   it("creates a queue with options", async () => {
@@ -250,6 +247,7 @@ describe("RabbitMQClient", () => {
       ok: false,
       status: 409,
       statusText: "Conflict",
+      text: async () => "PRECONDITION_FAILED - inequivalent arg 'durable'",
     });
 
     await expect(
@@ -257,7 +255,9 @@ describe("RabbitMQClient", () => {
         durable: true,
         auto_delete: false,
       }),
-    ).rejects.toThrow("409");
+    ).rejects.toThrow(
+      "RabbitMQ API error: 409 Conflict — PRECONDITION_FAILED - inequivalent arg 'durable'",
+    );
   });
 
   it("creates a binding between an exchange and a queue", async () => {
@@ -352,11 +352,14 @@ describe("RabbitMQClient", () => {
       ok: false,
       status: 404,
       statusText: "Not Found",
+      text: async () => '{"error":"Object Not Found","reason":"Not Found"}',
     });
 
     await expect(
       client.createBinding("/", "nonexistent", "orders", "order.#"),
-    ).rejects.toThrow("404");
+    ).rejects.toThrow(
+      'RabbitMQ API error: 404 Not Found — {"error":"Object Not Found","reason":"Not Found"}',
+    );
   });
 
   it("throws on error when publishing a message", async () => {
@@ -364,6 +367,7 @@ describe("RabbitMQClient", () => {
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
+      text: async () => "Internal Server Error",
     });
 
     await expect(
@@ -373,6 +377,8 @@ describe("RabbitMQClient", () => {
         payload_encoding: "string",
         properties: {},
       }),
-    ).rejects.toThrow("500");
+    ).rejects.toThrow(
+      "RabbitMQ API error: 500 Internal Server Error — Internal Server Error",
+    );
   });
 });

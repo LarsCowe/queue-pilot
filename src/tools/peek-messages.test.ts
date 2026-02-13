@@ -47,6 +47,36 @@ describe("peekMessages", () => {
     expect(result.messages).toEqual([]);
   });
 
+  it("includes payload_encoding in message output", async () => {
+    const client = {
+      peekMessages: vi.fn().mockResolvedValue([
+        {
+          payload: '{"orderId":"ORD-001"}',
+          payload_encoding: "string",
+          properties: { type: "order.created" },
+          exchange: "events",
+          routing_key: "order.created",
+          message_count: 0,
+          redelivered: false,
+        },
+        {
+          payload: "SGVsbG8gV29ybGQ=",
+          payload_encoding: "base64",
+          properties: { type: "order.created" },
+          exchange: "events",
+          routing_key: "order.created",
+          message_count: 0,
+          redelivered: false,
+        },
+      ]),
+    } as unknown as RabbitMQClient;
+
+    const result = await peekMessages(client, "/", "orders", 5);
+
+    expect(result.messages[0].payload_encoding).toBe("string");
+    expect(result.messages[1].payload_encoding).toBe("base64");
+  });
+
   it("propagates errors from the RabbitMQ client", async () => {
     const client = {
       peekMessages: vi.fn().mockRejectedValue(new Error("Connection refused")),

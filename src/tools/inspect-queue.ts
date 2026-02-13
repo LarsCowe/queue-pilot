@@ -3,6 +3,7 @@ import type { SchemaValidator } from "../schemas/validator.js";
 
 export interface InspectedMessage {
   payload: string;
+  payload_encoding: string;
   parsedPayload: unknown;
   properties: {
     correlation_id?: string;
@@ -10,6 +11,7 @@ export interface InspectedMessage {
     type?: string;
     timestamp?: number;
     headers?: Record<string, unknown>;
+    content_type?: string;
   };
   exchange: string;
   routing_key: string;
@@ -51,39 +53,52 @@ export async function inspectQueue(
     let valid: boolean | null = null;
     let errors: Array<{ path: string; message: string }> = [];
 
-    try {
-      parsedPayload = JSON.parse(m.payload);
-    } catch {
-      parsedPayload = m.payload;
-    }
+    if (m.payload_encoding === "base64") {
+      noSchemaCount++;
+    } else {
+      let jsonParsed = false;
+      try {
+        parsedPayload = JSON.parse(m.payload);
+        jsonParsed = true;
+      } catch {
+        parsedPayload = m.payload;
+      }
 
-    if (schemaName) {
-      const schemaEntry = validator.getSchema(schemaName);
-      if (schemaEntry) {
-        const result = validator.validate(schemaName, parsedPayload);
-        valid = result.valid;
-        errors = result.errors;
+      if (schemaName) {
+        const schemaEntry = validator.getSchema(schemaName);
+        if (schemaEntry) {
+          if (jsonParsed) {
+            const result = validator.validate(schemaName, parsedPayload);
+            valid = result.valid;
+            errors = result.errors;
 
-        if (valid) {
-          validCount++;
+            if (valid) {
+              validCount++;
+            } else {
+              invalidCount++;
+            }
+          } else {
+            valid = false;
+            errors = [{ path: "", message: "Invalid JSON payload" }];
+            invalidCount++;
+          }
         } else {
-          invalidCount++;
+          noSchemaCount++;
+          errors = [
+            {
+              path: "",
+              message: `Schema "${schemaName}" not found`,
+            },
+          ];
         }
       } else {
         noSchemaCount++;
-        errors = [
-          {
-            path: "",
-            message: `Schema "${schemaName}" not found`,
-          },
-        ];
       }
-    } else {
-      noSchemaCount++;
     }
 
     return {
       payload: m.payload,
+      payload_encoding: m.payload_encoding,
       parsedPayload,
       properties: {
         correlation_id: m.properties.correlation_id,
@@ -91,6 +106,7 @@ export async function inspectQueue(
         type: m.properties.type,
         timestamp: m.properties.timestamp,
         headers: m.properties.headers,
+        content_type: m.properties.content_type,
       },
       exchange: m.exchange,
       routing_key: m.routing_key,

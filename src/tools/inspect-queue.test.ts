@@ -220,6 +220,31 @@ describe("inspectQueue", () => {
 
     expect(result.messages[0].parsedPayload).toBe("this is not valid JSON");
     expect(result.messages[0].validation.valid).toBe(false);
+    expect(result.messages[0].validation.errors[0].message).toContain(
+      "Invalid JSON",
+    );
+    expect(result.summary.invalid).toBe(1);
+  });
+
+  it("reports noSchema for malformed JSON without a schema type", async () => {
+    const client = mockClient([
+      {
+        payload: "not JSON at all",
+        payload_encoding: "string",
+        properties: {},
+        exchange: "",
+        routing_key: "",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.messages[0].parsedPayload).toBe("not JSON at all");
+    expect(result.messages[0].validation.valid).toBeNull();
+    expect(result.summary.noSchema).toBe(1);
   });
 
   it("returns correct summary for an empty queue", async () => {
@@ -238,7 +263,49 @@ describe("inspectQueue", () => {
     });
   });
 
-  it("passes through all message properties", async () => {
+  it("skips JSON.parse and validation for base64-encoded payloads", async () => {
+    const client = mockClient([
+      {
+        payload: "SGVsbG8gV29ybGQ=",
+        payload_encoding: "base64",
+        properties: { type: "order.created" },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.messages[0].payload).toBe("SGVsbG8gV29ybGQ=");
+    expect(result.messages[0].payload_encoding).toBe("base64");
+    expect(result.messages[0].parsedPayload).toBeNull();
+    expect(result.messages[0].validation.valid).toBeNull();
+    expect(result.summary.noSchema).toBe(1);
+  });
+
+  it("includes payload_encoding in message output", async () => {
+    const client = mockClient([
+      {
+        payload: '{"orderId":"ORD-001","amount":49.99}',
+        payload_encoding: "string",
+        properties: { type: "order.created" },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.messages[0].payload_encoding).toBe("string");
+  });
+
+  it("passes through all message properties including content_type", async () => {
     const client = mockClient([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
@@ -249,6 +316,7 @@ describe("inspectQueue", () => {
           message_id: "msg-def-456",
           timestamp: 1705312200,
           headers: { "x-retry-count": 2, source: "billing-service" },
+          content_type: "application/json",
         },
         exchange: "events",
         routing_key: "order.created",
@@ -266,6 +334,7 @@ describe("inspectQueue", () => {
       message_id: "msg-def-456",
       timestamp: 1705312200,
       headers: { "x-retry-count": 2, source: "billing-service" },
+      content_type: "application/json",
     });
   });
 

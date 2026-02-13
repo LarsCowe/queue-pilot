@@ -38,8 +38,9 @@ export class RabbitMQClient {
     });
 
     if (!response.ok) {
+      const body = await response.text();
       throw new Error(
-        `RabbitMQ API error: ${response.status} ${response.statusText}`,
+        `RabbitMQ API error: ${response.status} ${response.statusText} — ${body}`,
       );
     }
 
@@ -91,19 +92,10 @@ export class RabbitMQClient {
     vhost: string,
     queue: string,
   ): Promise<PurgeResponse> {
-    const encodedVhost = encodeVhost(vhost);
-    const encodedQueue = encodeURIComponent(queue);
-
-    const messages = await this.peekMessages(vhost, queue, 1);
-    const first = messages[0];
-    const messageCount = first !== undefined ? first.message_count + 1 : 0;
-
-    await this.requestVoid(
-      `/api/queues/${encodedVhost}/${encodedQueue}/contents`,
+    return this.request<PurgeResponse>(
+      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}/contents`,
       { method: "DELETE" },
     );
-
-    return { messages_purged: messageCount };
   }
 
   async createQueue(

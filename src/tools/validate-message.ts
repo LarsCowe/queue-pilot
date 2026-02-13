@@ -1,5 +1,4 @@
 import type { SchemaValidator } from "../schemas/validator.js";
-import type { ValidationResult } from "../schemas/types.js";
 
 export interface ValidateMessageResult {
   schemaName: string;
@@ -23,7 +22,7 @@ export function validateMessage(
     };
   }
 
-  const result: ValidationResult = validator.validate(schemaName, parsed);
+  const result = validator.validate(schemaName, parsed);
 
   return {
     schemaName,

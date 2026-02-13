@@ -1,9 +1,9 @@
-import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { RabbitMQClient } from "./rabbitmq/client.js";
 import { SchemaValidator } from "./schemas/validator.js";
 import type { SchemaEntry } from "./schemas/types.js";
+import { VERSION } from "./version.js";
 import { listSchemas } from "./tools/list-schemas.js";
 import { getSchema } from "./tools/get-schema.js";
 import { validateMessage } from "./tools/validate-message.js";
@@ -17,14 +17,12 @@ import { purgeQueue } from "./tools/purge-queue.js";
 import { createQueue } from "./tools/create-queue.js";
 import { createBinding } from "./tools/create-binding.js";
 
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json") as { version: string };
-
 export interface ServerConfig {
   schemas: SchemaEntry[];
   rabbitmqUrl: string;
   rabbitmqUser: string;
   rabbitmqPass: string;
+  version?: string;
 }
 
 const jsonResponse = (data: unknown) => ({
@@ -41,7 +39,7 @@ export function createServer(config: ServerConfig): McpServer {
 
   const server = new McpServer({
     name: "queue-pilot",
-    version: pkg.version,
+    version: config.version ?? VERSION,
   });
 
   server.tool("list_schemas", "List all loaded message schemas", {}, async () => {
@@ -179,7 +177,7 @@ export function createServer(config: ServerConfig): McpServer {
           "Message type (e.g. 'order.created'), used for schema lookup",
         ),
       headers: z
-        .record(z.unknown())
+        .record(z.union([z.string(), z.number(), z.boolean(), z.null()]))
         .optional()
         .describe("Optional message headers"),
       validate: z

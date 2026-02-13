@@ -14,6 +14,6 @@ export async function purgeQueue(
 
   return {
     queue,
-    messages_purged: response.messages_purged,
+    messages_purged: response.message_count,
   };
 }

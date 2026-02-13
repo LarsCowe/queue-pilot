@@ -58,5 +58,5 @@ export interface PublishResponse {
 }
 
 export interface PurgeResponse {
-  messages_purged: number;
+  message_count: number;
 }

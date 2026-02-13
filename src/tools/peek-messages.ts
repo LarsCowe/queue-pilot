@@ -3,6 +3,7 @@ import type { RabbitMQClient } from "../rabbitmq/client.js";
 export interface PeekMessagesResult {
   messages: Array<{
     payload: string;
+    payload_encoding: string;
     properties: {
       correlation_id?: string;
       message_id?: string;
@@ -28,6 +29,7 @@ export async function peekMessages(
   return {
     messages: messages.map((m) => ({
       payload: m.payload,
+      payload_encoding: m.payload_encoding,
       properties: {
         correlation_id: m.properties.correlation_id,
         message_id: m.properties.message_id,

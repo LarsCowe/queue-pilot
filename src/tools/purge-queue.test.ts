@@ -5,7 +5,7 @@ import { purgeQueue } from "./purge-queue.js";
 describe("purgeQueue", () => {
   it("returns purged message count for a queue", async () => {
     const client = {
-      purgeQueue: vi.fn().mockResolvedValue({ messages_purged: 42 }),
+      purgeQueue: vi.fn().mockResolvedValue({ message_count: 42 }),
     } as unknown as RabbitMQClient;
 
     const result = await purgeQueue(client, "/", "orders");
@@ -16,7 +16,7 @@ describe("purgeQueue", () => {
 
   it("returns zero when queue is already empty", async () => {
     const client = {
-      purgeQueue: vi.fn().mockResolvedValue({ messages_purged: 0 }),
+      purgeQueue: vi.fn().mockResolvedValue({ message_count: 0 }),
     } as unknown as RabbitMQClient;
 
     const result = await purgeQueue(client, "/", "notifications");

@@ -153,11 +153,39 @@ Schema matching: when inspecting a queue, the message's `type` property is used 
 | `--rabbitmq-user` | `guest` | RabbitMQ username |
 | `--rabbitmq-pass` | `guest` | RabbitMQ password |
 
+## Environment Variables
+
+RabbitMQ connection settings can also be configured via environment variables. CLI arguments take priority over environment variables, which take priority over defaults.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RABBITMQ_URL` | `http://localhost:15672` | RabbitMQ Management API URL |
+| `RABBITMQ_USER` | `guest` | RabbitMQ username |
+| `RABBITMQ_PASS` | `guest` | RabbitMQ password |
+
+This is useful with MCP client `env` blocks to avoid exposing credentials in `ps` output:
+
+```json
+{
+  "mcpServers": {
+    "queue-pilot": {
+      "command": "npx",
+      "args": ["queue-pilot", "--schemas", "./schemas"],
+      "env": {
+        "RABBITMQ_URL": "http://localhost:15672",
+        "RABBITMQ_USER": "admin",
+        "RABBITMQ_PASS": "secret"
+      }
+    }
+  }
+}
+```
+
 ## Development
 
 ```bash
 npm install
-npm test                    # Unit tests (118 tests)
+npm test                    # Unit tests
 npm run test:coverage       # Coverage report
 npm run build               # TypeScript compilation
 npm run typecheck           # Type check

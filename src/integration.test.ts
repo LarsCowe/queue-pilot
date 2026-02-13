@@ -113,6 +113,10 @@ describe("Integration: Queue Pilot with RabbitMQ", () => {
     );
   });
 
+  afterAll(async () => {
+    await deleteQueue(testQueue).catch(() => {});
+  });
+
   it("lists queues including the test queue", async () => {
     const result = await client.callTool({
       name: "list_queues",
@@ -190,7 +194,7 @@ describe("Integration: Queue Pilot with RabbitMQ", () => {
     const content = result.content as Array<{ type: string; text: string }>;
     const parsed = JSON.parse(content[0].text);
 
-    expect(parsed.bindings).toBeDefined();
+    expect(Array.isArray(parsed.bindings)).toBe(true);
   });
 });
 

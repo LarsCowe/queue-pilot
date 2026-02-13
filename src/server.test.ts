@@ -171,9 +171,13 @@ describe("MCP Server", () => {
       arguments: { vhost: "/" },
     });
 
-    // Tool is wired and executes — returns either queue data or a connection error
     const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toBeDefined();
+    if (result.isError) {
+      expect(content[0].text).toContain("fetch");
+    } else {
+      const parsed = JSON.parse(content[0].text);
+      expect(Array.isArray(parsed.queues)).toBe(true);
+    }
   });
 
   it("wires peek_messages tool to the RabbitMQ client", async () => {
@@ -183,6 +187,8 @@ describe("MCP Server", () => {
       arguments: { queue: "test-queue", count: 1, vhost: "/" },
     });
     expect(result.isError).toBe(true);
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
   });
 
   it("wires inspect_queue tool to the RabbitMQ client", async () => {
@@ -192,6 +198,8 @@ describe("MCP Server", () => {
       arguments: { queue: "test-queue", count: 1, vhost: "/" },
     });
     expect(result.isError).toBe(true);
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
   });
 
   it("wires publish_message tool to the RabbitMQ client", async () => {
@@ -206,7 +214,13 @@ describe("MCP Server", () => {
       },
     });
     const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toBeDefined();
+    if (result.isError) {
+      expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
+    } else {
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed).toHaveProperty("published");
+      expect(parsed).toHaveProperty("routed");
+    }
   });
 
   it("wires purge_queue tool to the RabbitMQ client", async () => {
@@ -216,7 +230,8 @@ describe("MCP Server", () => {
       arguments: { queue: "test-queue" },
     });
     const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toBeDefined();
+    expect(result.isError).toBe(true);
+    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
   });
 
   it("wires create_queue tool to the RabbitMQ client", async () => {
@@ -226,7 +241,12 @@ describe("MCP Server", () => {
       arguments: { queue: "test-queue-wiring" },
     });
     const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toBeDefined();
+    if (result.isError) {
+      expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
+    } else {
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed).toHaveProperty("queue", "test-queue-wiring");
+    }
   });
 
   it("wires create_binding tool to the RabbitMQ client", async () => {
@@ -236,6 +256,7 @@ describe("MCP Server", () => {
       arguments: { exchange: "amq.topic", queue: "test-queue" },
     });
     const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toBeDefined();
+    expect(result.isError).toBe(true);
+    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
   });
 });

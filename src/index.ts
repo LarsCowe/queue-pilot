@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-import { createRequire } from "module";
+import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadSchemas } from "./schemas/loader.js";
 import { createServer } from "./server.js";
-
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json") as { version: string };
+import { VERSION } from "./version.js";
 
 export interface CliArgs {
   schemas: string;
@@ -27,6 +25,11 @@ Options:
   --rabbitmq-pass <pass> RabbitMQ password (default: guest)
   --help                 Show this help message
   --version              Show version number
+
+Environment variables (used as fallback when CLI args are not provided):
+  RABBITMQ_URL              RabbitMQ Management API URL
+  RABBITMQ_USER             RabbitMQ username
+  RABBITMQ_PASS             RabbitMQ password
 `;
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -36,7 +39,7 @@ export function parseArgs(argv: string[]): CliArgs {
   }
 
   if (argv.includes("--version")) {
-    process.stderr.write(`${pkg.version}\n`);
+    process.stderr.write(`${VERSION}\n`);
     process.exit(0);
   }
 
@@ -66,9 +69,9 @@ export function parseArgs(argv: string[]): CliArgs {
 
   return {
     schemas: args.schemas,
-    rabbitmqUrl: args.rabbitmqUrl ?? "http://localhost:15672",
-    rabbitmqUser: args.rabbitmqUser ?? "guest",
-    rabbitmqPass: args.rabbitmqPass ?? "guest",
+    rabbitmqUrl: args.rabbitmqUrl ?? process.env.RABBITMQ_URL ?? "http://localhost:15672",
+    rabbitmqUser: args.rabbitmqUser ?? process.env.RABBITMQ_USER ?? "guest",
+    rabbitmqPass: args.rabbitmqPass ?? process.env.RABBITMQ_PASS ?? "guest",
   };
 }
 
@@ -86,6 +89,7 @@ async function main(): Promise<void> {
     rabbitmqUrl: args.rabbitmqUrl,
     rabbitmqUser: args.rabbitmqUser,
     rabbitmqPass: args.rabbitmqPass,
+    version: VERSION,
   });
 
   const transport = new StdioServerTransport();
@@ -95,11 +99,12 @@ async function main(): Promise<void> {
 }
 
 const isEntryPoint =
-  process.argv[1] === fileURLToPath(import.meta.url);
+  resolve(process.argv[1] ?? "") === resolve(fileURLToPath(import.meta.url));
 
 if (isEntryPoint) {
   main().catch((error: unknown) => {
-    process.stderr.write(`Fatal error: ${error}\n`);
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    process.stderr.write(`Fatal error: ${message}\n`);
     process.exit(1);
   });
 }
