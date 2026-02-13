@@ -222,6 +222,20 @@ describe("RabbitMQClient", () => {
     expect(result).toEqual({ message_count: 0 });
   });
 
+  it("handles 204 No Content from purge endpoint", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new SyntaxError("Unexpected end of JSON input");
+      },
+    });
+
+    const result = await client.purgeQueue("/", "orders");
+
+    expect(result).toEqual({ message_count: 0 });
+  });
+
   it("creates a queue with options", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

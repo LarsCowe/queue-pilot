@@ -99,10 +99,14 @@ export class RabbitMQClient {
     vhost: string,
     queue: string,
   ): Promise<PurgeResponse> {
-    return this.request<PurgeResponse>(
+    const response = await this.rawRequest(
       `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}/contents`,
       { method: "DELETE" },
     );
+    if (response.status === 204) {
+      return { message_count: 0 };
+    }
+    return response.json() as Promise<PurgeResponse>;
   }
 
   async createQueue(
