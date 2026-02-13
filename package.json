@@ -13,9 +13,9 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --exclude src/integration.test.ts",
+    "test:watch": "vitest --exclude src/integration.test.ts",
+    "test:coverage": "vitest run --coverage --exclude src/integration.test.ts",
     "lint": "tsc --noEmit",
     "test:integration": "vitest run src/integration.test.ts"
   },
