@@ -1,0 +1,43 @@
+import { describe, it, expect, vi } from "vitest";
+import { RabbitMQClient } from "../rabbitmq/client.js";
+import { listQueues } from "./list-queues.js";
+
+describe("listQueues", () => {
+  it("returns queue list from RabbitMQ client", async () => {
+    const client = {
+      listQueues: vi.fn().mockResolvedValue([
+        {
+          name: "orders",
+          messages_ready: 10,
+          messages_unacknowledged: 3,
+          state: "running",
+          vhost: "/",
+        },
+        {
+          name: "notifications",
+          messages_ready: 0,
+          messages_unacknowledged: 0,
+          state: "running",
+          vhost: "/",
+        },
+      ]),
+    } as unknown as RabbitMQClient;
+
+    const result = await listQueues(client, "/");
+
+    expect(result.queues).toHaveLength(2);
+    expect(result.queues[0].name).toBe("orders");
+    expect(result.queues[0].messages_ready).toBe(10);
+    expect(client.listQueues).toHaveBeenCalledWith("/");
+  });
+
+  it("returns empty list when no queues exist", async () => {
+    const client = {
+      listQueues: vi.fn().mockResolvedValue([]),
+    } as unknown as RabbitMQClient;
+
+    const result = await listQueues(client, "/");
+
+    expect(result.queues).toEqual([]);
+  });
+});
