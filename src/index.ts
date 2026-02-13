@@ -47,18 +47,42 @@ export function parseArgs(argv: string[]): CliArgs {
 
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
-      case "--schemas":
-        args.schemas = argv[++i];
+      case "--schemas": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --schemas requires a value\n");
+          process.exit(1);
+        }
+        args.schemas = value;
         break;
-      case "--rabbitmq-url":
-        args.rabbitmqUrl = argv[++i];
+      }
+      case "--rabbitmq-url": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --rabbitmq-url requires a value\n");
+          process.exit(1);
+        }
+        args.rabbitmqUrl = value;
         break;
-      case "--rabbitmq-user":
-        args.rabbitmqUser = argv[++i];
+      }
+      case "--rabbitmq-user": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --rabbitmq-user requires a value\n");
+          process.exit(1);
+        }
+        args.rabbitmqUser = value;
         break;
-      case "--rabbitmq-pass":
-        args.rabbitmqPass = argv[++i];
+      }
+      case "--rabbitmq-pass": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --rabbitmq-pass requires a value\n");
+          process.exit(1);
+        }
+        args.rabbitmqPass = value;
         break;
+      }
     }
   }
 

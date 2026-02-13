@@ -31,6 +31,7 @@ export interface InspectQueueResult {
     valid: number;
     invalid: number;
     noSchema: number;
+    skipped: number;
   };
 }
 
@@ -46,6 +47,7 @@ export async function inspectQueue(
   let validCount = 0;
   let invalidCount = 0;
   let noSchemaCount = 0;
+  let skippedCount = 0;
 
   const inspected: InspectedMessage[] = messages.map((m) => {
     const schemaName = m.properties.type ?? null;
@@ -54,7 +56,7 @@ export async function inspectQueue(
     let errors: Array<{ path: string; message: string }> = [];
 
     if (m.payload_encoding === "base64") {
-      noSchemaCount++;
+      skippedCount++;
     } else {
       let jsonParsed = false;
       try {
@@ -127,6 +129,7 @@ export async function inspectQueue(
       valid: validCount,
       invalid: invalidCount,
       noSchema: noSchemaCount,
+      skipped: skippedCount,
     },
   };
 }

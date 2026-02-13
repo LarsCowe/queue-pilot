@@ -6,7 +6,7 @@ export interface PublishMessageParams {
   routing_key: string;
   payload: string;
   message_type?: string;
-  headers?: Record<string, unknown>;
+  headers?: Record<string, string | number | boolean | null>;
   validate: boolean;
   vhost: string;
 }

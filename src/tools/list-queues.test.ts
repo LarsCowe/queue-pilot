@@ -41,6 +41,25 @@ describe("listQueues", () => {
     expect(result.queues).toEqual([]);
   });
 
+  it("coerces null message counts to zero for clustered setups", async () => {
+    const client = {
+      listQueues: vi.fn().mockResolvedValue([
+        {
+          name: "cluster-queue",
+          messages_ready: null,
+          messages_unacknowledged: null,
+          state: "running",
+          vhost: "/",
+        },
+      ]),
+    } as unknown as RabbitMQClient;
+
+    const result = await listQueues(client, "/");
+
+    expect(result.queues[0].messages_ready).toBe(0);
+    expect(result.queues[0].messages_unacknowledged).toBe(0);
+  });
+
   it("propagates errors from the RabbitMQ client", async () => {
     const client = {
       listQueues: vi.fn().mockRejectedValue(new Error("Connection refused")),

@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.2.4] — 2026-02-13
+
+### Fixed
+- CLI `parseArgs` no longer silently consumes flags as values when a preceding flag is missing its argument
+- `SchemaValidator` constructor catches `addSchema` errors instead of leaving partial initialization
+- `response.text()` failure in RabbitMQ error handler no longer masks HTTP status context
+- `loadSchemas` eliminates TOCTOU race by removing redundant `access()` pre-check
+
+### Added
+- `encodeVhost` rejects empty string to prevent silent API endpoint misrouting
+- `loadSchemas` now recurses into subdirectories for hierarchical schema organization
+
+## [0.2.3] — 2026-02-13
+
+### Changed
+- Improved TypeScript strictness with `noUncheckedIndexedAccess` and safer array indexing
+- Extracted `jsonResponse` helper to eliminate duplication in server request handling
+- Replaced `any`-typed Ajv import with typed `AjvInstance` interface
+- Changed `GetSchemaResult` to discriminated union for proper type narrowing
+- Extracted shared test fixtures for canonical order and payment schemas
+- Added CI matrix for Windows alongside Ubuntu
+- Added integration test and publish workflows with RabbitMQ service containers
+- Source maps now resolve for consumers (src/ included in package)
+- Added `clean` script to remove stale build artifacts
+
+### Added
+- Shared test fixtures module (`test-fixtures.ts`)
+- Error propagation tests for list-queues, peek-messages, list-exchanges, list-bindings
+- RabbitMQ tool wiring tests for server
+- CLI argument parsing tests for `--rabbitmq-url/user/pass` overrides
+
+### Removed
+- Orphaned eslint-disable comments from validator
+- Unused globals and path alias from vitest config
+
 ## [0.2.2] — 2026-02-13
 
 ### Fixed

@@ -153,4 +153,50 @@ describe("parseArgs", () => {
     expect(result.schemas).toBe("/tmp/schemas");
     expect(result.rabbitmqUrl).toBe("http://localhost:15672");
   });
+
+  it("exits 1 when --schemas value is another flag", () => {
+    expect(() => parseArgs(["--schemas", "--rabbitmq-url"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --schemas is last argument with no value", () => {
+    expect(() => parseArgs(["--schemas"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-url value is another flag", () => {
+    expect(() => parseArgs(["--rabbitmq-url", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-url is last argument with no value", () => {
+    expect(() => parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-url"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-user value is another flag", () => {
+    expect(() => parseArgs(["--rabbitmq-user", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-user is last argument with no value", () => {
+    expect(() => parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-user"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-pass value is another flag", () => {
+    expect(() => parseArgs(["--rabbitmq-pass", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --rabbitmq-pass is last argument with no value", () => {
+    expect(() => parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-pass"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("writes error message naming the flag that is missing a value", () => {
+    expect(() => parseArgs(["--rabbitmq-url", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+    expect(output).toContain("--rabbitmq-url requires a value");
+  });
 });

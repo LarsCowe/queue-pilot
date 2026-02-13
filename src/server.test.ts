@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
@@ -163,100 +163,267 @@ describe("MCP Server", () => {
     expect(parsed.valid).toBe(false);
   });
 
-  it("wires list_queues tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-
-    const result = await client.callTool({
-      name: "list_queues",
-      arguments: { vhost: "/" },
+  describe("wiring (success)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
-    const content = result.content as Array<{ type: string; text: string }>;
-    if (result.isError) {
-      expect(content[0].text).toContain("fetch");
-    } else {
+    it("list_queues returns queue array on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([
+          { name: "orders", messages_ready: 5, messages_unacknowledged: 1, state: "running", vhost: "/" },
+        ]), { status: 200 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "list_queues",
+        arguments: { vhost: "/" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
       const parsed = JSON.parse(content[0].text);
-      expect(Array.isArray(parsed.queues)).toBe(true);
-    }
-  });
-
-  it("wires peek_messages tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "peek_messages",
-      arguments: { queue: "test-queue", count: 1, vhost: "/" },
+      expect(parsed.queues).toEqual([
+        { name: "orders", messages_ready: 5, messages_unacknowledged: 1, state: "running" },
+      ]);
     });
-    expect(result.isError).toBe(true);
-    const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
-  });
 
-  it("wires inspect_queue tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "inspect_queue",
-      arguments: { queue: "test-queue", count: 1, vhost: "/" },
-    });
-    expect(result.isError).toBe(true);
-    const content = result.content as Array<{ type: string; text: string }>;
-    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
-  });
+    it("peek_messages returns messages on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([
+          {
+            payload: '{"orderId":"ORD-001","amount":49.99}',
+            payload_encoding: "string",
+            properties: { content_type: "application/json", type: "order.created" },
+            exchange: "amq.default",
+            routing_key: "orders",
+            message_count: 3,
+            redelivered: false,
+          },
+        ]), { status: 200 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "peek_messages",
+        arguments: { queue: "orders", count: 1, vhost: "/" },
+      });
 
-  it("wires publish_message tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "publish_message",
-      arguments: {
-        exchange: "amq.default",
-        routing_key: "test-queue",
-        payload: JSON.stringify({ orderId: "ORD-999", amount: 10 }),
-        validate: false,
-      },
-    });
-    const content = result.content as Array<{ type: string; text: string }>;
-    if (result.isError) {
-      expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
-    } else {
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
       const parsed = JSON.parse(content[0].text);
-      expect(parsed).toHaveProperty("published");
-      expect(parsed).toHaveProperty("routed");
-    }
-  });
-
-  it("wires purge_queue tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "purge_queue",
-      arguments: { queue: "test-queue" },
+      expect(parsed.count).toBe(1);
+      expect(parsed.messages[0].payload).toBe('{"orderId":"ORD-001","amount":49.99}');
+      expect(parsed.messages[0].exchange).toBe("amq.default");
     });
-    const content = result.content as Array<{ type: string; text: string }>;
-    expect(result.isError).toBe(true);
-    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
-  });
 
-  it("wires create_queue tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "create_queue",
-      arguments: { queue: "test-queue-wiring" },
-    });
-    const content = result.content as Array<{ type: string; text: string }>;
-    if (result.isError) {
-      expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
-    } else {
+    it("inspect_queue returns inspected messages on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([
+          {
+            payload: '{"orderId":"ORD-002","amount":25.00}',
+            payload_encoding: "string",
+            properties: { content_type: "application/json", type: "order.created" },
+            exchange: "amq.default",
+            routing_key: "orders",
+            message_count: 1,
+            redelivered: false,
+          },
+        ]), { status: 200 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "inspect_queue",
+        arguments: { queue: "orders", count: 1, vhost: "/" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
       const parsed = JSON.parse(content[0].text);
-      expect(parsed).toHaveProperty("queue", "test-queue-wiring");
-    }
+      expect(parsed.queue).toBe("orders");
+      expect(parsed.summary.total).toBe(1);
+      expect(parsed.summary.valid).toBe(1);
+    });
+
+    it("publish_message returns publish result on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ routed: true }), { status: 200 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "publish_message",
+        arguments: {
+          exchange: "amq.default",
+          routing_key: "orders",
+          payload: JSON.stringify({ orderId: "ORD-999", amount: 10 }),
+          validate: false,
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.published).toBe(true);
+      expect(parsed.routed).toBe(true);
+      expect(parsed.exchange).toBe("amq.default");
+      expect(parsed.routing_key).toBe("orders");
+    });
+
+    it("purge_queue returns purge count on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ message_count: 7 }), { status: 200 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "purge_queue",
+        arguments: { queue: "orders" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.queue).toBe("orders");
+      expect(parsed.messages_purged).toBe(7);
+    });
+
+    it("create_queue returns queue details on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(null, { status: 204 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "create_queue",
+        arguments: { queue: "new-queue" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.queue).toBe("new-queue");
+      expect(parsed.durable).toBe(false);
+      expect(parsed.auto_delete).toBe(false);
+    });
+
+    it("create_binding returns binding details on success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(null, { status: 201 }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "create_binding",
+        arguments: { exchange: "amq.topic", queue: "orders" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.exchange).toBe("amq.topic");
+      expect(parsed.queue).toBe("orders");
+    });
   });
 
-  it("wires create_binding tool to the RabbitMQ client", async () => {
-    const client = await createTestClient();
-    const result = await client.callTool({
-      name: "create_binding",
-      arguments: { exchange: "amq.topic", queue: "test-queue" },
+  describe("wiring (error)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
-    const content = result.content as Array<{ type: string; text: string }>;
-    expect(result.isError).toBe(true);
-    expect(content[0].text).toMatch(/fetch|RabbitMQ API error/);
+
+    it("list_queues propagates fetch errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "list_queues",
+        arguments: { vhost: "/" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("fetch failed");
+    });
+
+    it("peek_messages propagates fetch errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "peek_messages",
+        arguments: { queue: "orders", count: 1, vhost: "/" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("fetch failed");
+    });
+
+    it("inspect_queue propagates fetch errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "inspect_queue",
+        arguments: { queue: "orders", count: 1, vhost: "/" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("fetch failed");
+    });
+
+    it("publish_message propagates API errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("Not Found", { status: 404, statusText: "Not Found" }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "publish_message",
+        arguments: {
+          exchange: "amq.default",
+          routing_key: "orders",
+          payload: JSON.stringify({ orderId: "ORD-999", amount: 10 }),
+          validate: false,
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("RabbitMQ API error");
+    });
+
+    it("purge_queue propagates fetch errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "purge_queue",
+        arguments: { queue: "orders" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("fetch failed");
+    });
+
+    it("create_queue propagates API errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("Precondition Failed", { status: 412, statusText: "Precondition Failed" }),
+      );
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "create_queue",
+        arguments: { queue: "existing-queue" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("RabbitMQ API error");
+    });
+
+    it("create_binding propagates fetch errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+      const client = await createTestClient();
+      const result = await client.callTool({
+        name: "create_binding",
+        arguments: { exchange: "amq.topic", queue: "orders" },
+      });
+
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("fetch failed");
+    });
   });
 });

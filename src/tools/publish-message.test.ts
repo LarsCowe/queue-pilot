@@ -25,6 +25,8 @@ describe("publishMessage", () => {
     });
 
     expect(result.published).toBe(true);
+    expect(result.exchange).toBe("events");
+    expect(result.routing_key).toBe("order.created");
     expect(result.validation.valid).toBe(true);
     expect(result.validation.validated).toBe(true);
     expect(result.validation.schemaName).toBe("order.created");
@@ -58,6 +60,8 @@ describe("publishMessage", () => {
     });
 
     expect(result.published).toBe(false);
+    expect(result.exchange).toBe("events");
+    expect(result.routing_key).toBe("order.created");
     expect(result.validation.valid).toBe(false);
     expect(result.validation.validated).toBe(true);
     expect(result.validation.errors.length).toBeGreaterThan(0);
@@ -78,6 +82,8 @@ describe("publishMessage", () => {
     });
 
     expect(result.published).toBe(true);
+    expect(result.exchange).toBe("events");
+    expect(result.routing_key).toBe("order.created");
     expect(result.validation.validated).toBe(false);
     expect(client.publishMessage).toHaveBeenCalled();
   });
@@ -114,6 +120,8 @@ describe("publishMessage", () => {
     });
 
     expect(result.published).toBe(false);
+    expect(result.exchange).toBe("events");
+    expect(result.routing_key).toBe("unknown.event");
     expect(result.validation.errors.length).toBeGreaterThan(0);
     expect(result.validation.errors[0].message).toContain("unknown.event");
     expect(client.publishMessage).not.toHaveBeenCalled();
@@ -132,6 +140,8 @@ describe("publishMessage", () => {
     });
 
     expect(result.published).toBe(false);
+    expect(result.exchange).toBe("events");
+    expect(result.routing_key).toBe("order.created");
     expect(result.validation.errors.length).toBeGreaterThan(0);
     expect(result.validation.errors[0].message).toMatch(/invalid json/i);
     expect(client.publishMessage).not.toHaveBeenCalled();

@@ -10,6 +10,7 @@ import type {
 } from "./types.js";
 
 function encodeVhost(vhost: string): string {
+  if (!vhost) throw new Error("vhost must not be empty");
   return vhost === "/" ? "%2F" : encodeURIComponent(vhost);
 }
 
@@ -38,7 +39,8 @@ export class RabbitMQClient {
     });
 
     if (!response.ok) {
-      const body = await response.text();
+      let body = "";
+      try { body = await response.text(); } catch { /* response body unreadable */ }
       throw new Error(
         `RabbitMQ API error: ${response.status} ${response.statusText} — ${body}`,
       );

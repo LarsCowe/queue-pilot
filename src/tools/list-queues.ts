@@ -18,8 +18,8 @@ export async function listQueues(
   return {
     queues: queues.map((q) => ({
       name: q.name,
-      messages_ready: q.messages_ready,
-      messages_unacknowledged: q.messages_unacknowledged,
+      messages_ready: q.messages_ready ?? 0,
+      messages_unacknowledged: q.messages_unacknowledged ?? 0,
       state: q.state,
     })),
   };

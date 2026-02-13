@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SchemaValidator } from "./validator.js";
 import type { SchemaEntry } from "./types.js";
 
@@ -182,6 +182,120 @@ describe("SchemaValidator", () => {
     });
 
     expect(result.valid).toBe(true);
+  });
+
+  it("handles schemas with nested custom keywords like x-display-name", () => {
+    const schemaWithNestedCustomKeys: SchemaEntry = {
+      name: "shipment.dispatched",
+      version: "1.0.0",
+      title: "Shipment Dispatched",
+      description: "Emitted when a shipment leaves the warehouse",
+      schema: {
+        $id: "shipment.dispatched",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        title: "Shipment Dispatched",
+        description: "Emitted when a shipment leaves the warehouse",
+        version: "1.0.0",
+        type: "object",
+        required: ["trackingCode", "carrier"],
+        properties: {
+          trackingCode: {
+            type: "string",
+            "x-display-name": "Tracking Code",
+          },
+          carrier: {
+            type: "string",
+            "x-display-name": "Carrier Name",
+          },
+        },
+      },
+    };
+
+    const nestedValidator = new SchemaValidator([schemaWithNestedCustomKeys]);
+
+    const result = nestedValidator.validate("shipment.dispatched", {
+      trackingCode: "TRK-98765",
+      carrier: "DHL Express",
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("skips a schema that causes addSchema to throw", () => {
+    const invalidSchema: SchemaEntry = {
+      name: "broken.event",
+      version: "1.0.0",
+      title: "Broken Event",
+      description: "Schema with an invalid type value that Ajv rejects",
+      schema: {
+        $id: "broken.event",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        type: "invalid-type" as unknown as string,
+      },
+    };
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const validator = new SchemaValidator([invalidSchema, registrationSchema]);
+    stderrSpy.mockRestore();
+
+    const names = validator.getSchemaNames();
+
+    expect(names).not.toContain("broken.event");
+  });
+
+  it("still loads valid schemas when an earlier schema fails", () => {
+    const invalidSchema: SchemaEntry = {
+      name: "broken.event",
+      version: "1.0.0",
+      title: "Broken Event",
+      description: "Schema with an invalid type value that Ajv rejects",
+      schema: {
+        $id: "broken.event",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        type: "invalid-type" as unknown as string,
+      },
+    };
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const validator = new SchemaValidator([invalidSchema, registrationSchema]);
+    stderrSpy.mockRestore();
+
+    const result = validator.validate("registration.created", {
+      messageId: "550e8400-e29b-41d4-a716-446655440000",
+      timestamp: "2025-01-15T10:30:00Z",
+      payload: {
+        personId: "P-12345",
+        name: "Jan Janssen",
+        email: "jan@example.com",
+      },
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  it("writes a warning to stderr when a schema is skipped", () => {
+    const invalidSchema: SchemaEntry = {
+      name: "broken.event",
+      version: "1.0.0",
+      title: "Broken Event",
+      description: "Schema with an invalid type value that Ajv rejects",
+      schema: {
+        $id: "broken.event",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        type: "invalid-type" as unknown as string,
+      },
+    };
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    new SchemaValidator([invalidSchema, registrationSchema]);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Warning: skipping schema "broken.event"')
+    );
+
+    stderrSpy.mockRestore();
   });
 
   it("dispatches validation to the correct schema when multiple are loaded", () => {

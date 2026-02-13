@@ -33,6 +33,8 @@ describe("peekMessages", () => {
     expect(result.messages[0].properties.message_id).toBe("msg-123");
     expect(result.messages[0].exchange).toBe("events");
     expect(result.messages[0].routing_key).toBe("order.created");
+    expect(result.messages[0]).not.toHaveProperty("message_count");
+    expect(result.messages[0]).not.toHaveProperty("redelivered");
     expect(client.peekMessages).toHaveBeenCalledWith("/", "orders", 5);
   });
 
@@ -74,7 +76,11 @@ describe("peekMessages", () => {
     const result = await peekMessages(client, "/", "orders", 5);
 
     expect(result.messages[0].payload_encoding).toBe("string");
+    expect(result.messages[0]).not.toHaveProperty("message_count");
+    expect(result.messages[0]).not.toHaveProperty("redelivered");
     expect(result.messages[1].payload_encoding).toBe("base64");
+    expect(result.messages[1]).not.toHaveProperty("message_count");
+    expect(result.messages[1]).not.toHaveProperty("redelivered");
   });
 
   it("propagates errors from the RabbitMQ client", async () => {

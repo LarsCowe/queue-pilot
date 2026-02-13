@@ -1,18 +1,24 @@
-import { readdir, readFile, access } from "fs/promises";
+import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import type { SchemaDefinition, SchemaEntry } from "./types.js";
 
 export async function loadSchemas(directory: string): Promise<SchemaEntry[]> {
+  let files: string[];
   try {
-    await access(directory);
-  } catch {
-    throw new Error(`Schema directory not found: ${directory}`);
+    files = await readdir(directory, { recursive: true });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(`Schema directory not found: ${directory}`);
+    }
+    throw error;
   }
 
-  const files = await readdir(directory);
-  const jsonFiles = files.filter((f) => f.endsWith(".json"));
+  const jsonFiles = files.filter(
+    (f) => typeof f === "string" && f.endsWith(".json"),
+  );
 
   const entries: SchemaEntry[] = [];
+  const seenIds = new Set<string>();
 
   for (const file of jsonFiles) {
     try {
@@ -25,6 +31,12 @@ export async function loadSchemas(directory: string): Promise<SchemaEntry[]> {
       }
 
       const schema = parsed as SchemaDefinition;
+
+      if (seenIds.has(schema.$id)) {
+        process.stderr.write(`Warning: skipping ${file}: duplicate $id "${schema.$id}"\n`);
+        continue;
+      }
+      seenIds.add(schema.$id);
 
       entries.push({
         name: schema.$id,

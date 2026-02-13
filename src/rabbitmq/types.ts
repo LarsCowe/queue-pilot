@@ -6,8 +6,8 @@ export interface RabbitMQConfig {
 
 export interface QueueInfo {
   name: string;
-  messages_ready: number;
-  messages_unacknowledged: number;
+  messages_ready: number | null;
+  messages_unacknowledged: number | null;
   state: string;
   vhost: string;
 }

@@ -140,6 +140,7 @@ describe("inspectQueue", () => {
       valid: 1,
       invalid: 1,
       noSchema: 1,
+      skipped: 0,
     });
   });
 
@@ -199,6 +200,7 @@ describe("inspectQueue", () => {
       valid: 2,
       invalid: 0,
       noSchema: 0,
+      skipped: 0,
     });
   });
 
@@ -260,7 +262,28 @@ describe("inspectQueue", () => {
       valid: 0,
       invalid: 0,
       noSchema: 0,
+      skipped: 0,
     });
+  });
+
+  it("counts base64 message with known schema type as skipped", async () => {
+    const client = mockClient([
+      {
+        payload: "SGVsbG8gV29ybGQ=",
+        payload_encoding: "base64",
+        properties: { type: "order.created" },
+        exchange: "events",
+        routing_key: "order.created",
+        message_count: 0,
+        redelivered: false,
+      },
+    ]);
+    const validator = new SchemaValidator([orderSchema]);
+
+    const result = await inspectQueue(client, validator, "/", "orders", 5);
+
+    expect(result.summary.skipped).toBe(1);
+    expect(result.summary.noSchema).toBe(0);
   });
 
   it("skips JSON.parse and validation for base64-encoded payloads", async () => {
@@ -283,7 +306,7 @@ describe("inspectQueue", () => {
     expect(result.messages[0].payload_encoding).toBe("base64");
     expect(result.messages[0].parsedPayload).toBeNull();
     expect(result.messages[0].validation.valid).toBeNull();
-    expect(result.summary.noSchema).toBe(1);
+    expect(result.summary.skipped).toBe(1);
   });
 
   it("includes payload_encoding in message output", async () => {

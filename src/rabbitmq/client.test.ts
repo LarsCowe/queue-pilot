@@ -381,4 +381,30 @@ describe("RabbitMQClient", () => {
       "RabbitMQ API error: 500 Internal Server Error — Internal Server Error",
     );
   });
+
+  it("preserves HTTP status in error when response body is unreadable", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: "Bad Gateway",
+      text: async () => {
+        throw new Error("connection reset");
+      },
+    });
+
+    await expect(client.listQueues("/")).rejects.toThrow(
+      "RabbitMQ API error: 502 Bad Gateway",
+    );
+  });
+
+  it("throws when vhost is empty string", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+
+    await expect(client.listQueues("")).rejects.toThrow(
+      "vhost must not be empty",
+    );
+  });
 });

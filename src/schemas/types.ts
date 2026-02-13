@@ -1,10 +1,10 @@
 export interface SchemaDefinition {
   $id: string;
-  $schema: string;
+  $schema?: string;
   title?: string;
   description?: string;
   version?: string;
-  type: string;
+  type?: string;
   required?: string[];
   properties?: Record<string, unknown>;
   [key: string]: unknown;

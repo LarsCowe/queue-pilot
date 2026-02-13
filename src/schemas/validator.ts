@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import type { SchemaDefinition, SchemaEntry, ValidationResult } from "./types.js";
+import type { SchemaEntry, ValidationResult } from "./types.js";
 
 interface AjvInstance {
   addSchema(schema: Record<string, unknown>, key: string): void;
@@ -8,80 +8,26 @@ interface AjvInstance {
 }
 
 const require = createRequire(import.meta.url);
-const AjvConstructor = (require("ajv").default ?? require("ajv")) as new (opts: { allErrors: boolean }) => AjvInstance;
+const AjvConstructor = (require("ajv").default ?? require("ajv")) as new (opts: { allErrors: boolean; strict: boolean }) => AjvInstance;
 const addFormats = (require("ajv-formats").default ?? require("ajv-formats")) as (ajv: AjvInstance) => void;
-
-const JSON_SCHEMA_DRAFT07_KEYWORDS = new Set([
-  "$id",
-  "$schema",
-  "$ref",
-  "$comment",
-  "title",
-  "description",
-  "default",
-  "readOnly",
-  "writeOnly",
-  "examples",
-  "type",
-  "enum",
-  "const",
-  "properties",
-  "required",
-  "additionalProperties",
-  "patternProperties",
-  "propertyNames",
-  "minProperties",
-  "maxProperties",
-  "dependencies",
-  "items",
-  "additionalItems",
-  "contains",
-  "minItems",
-  "maxItems",
-  "uniqueItems",
-  "allOf",
-  "anyOf",
-  "oneOf",
-  "not",
-  "if",
-  "then",
-  "else",
-  "format",
-  "minLength",
-  "maxLength",
-  "pattern",
-  "minimum",
-  "maximum",
-  "exclusiveMinimum",
-  "exclusiveMaximum",
-  "multipleOf",
-  "contentMediaType",
-  "contentEncoding",
-  "definitions",
-]);
-
-function stripNonStandardKeywords(schema: SchemaDefinition): Record<string, unknown> {
-  const cleaned: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(schema)) {
-    if (JSON_SCHEMA_DRAFT07_KEYWORDS.has(key)) {
-      cleaned[key] = value;
-    }
-  }
-  return cleaned;
-}
 
 export class SchemaValidator {
   private readonly ajv: AjvInstance;
   private readonly schemas: Map<string, SchemaEntry>;
 
   constructor(schemas: SchemaEntry[]) {
-    this.ajv = new AjvConstructor({ allErrors: true });
+    this.ajv = new AjvConstructor({ allErrors: true, strict: false });
     addFormats(this.ajv);
     this.schemas = new Map();
 
     for (const entry of schemas) {
-      this.schemas.set(entry.name, entry);
-      this.ajv.addSchema(stripNonStandardKeywords(entry.schema), entry.name);
+      try {
+        this.ajv.addSchema(entry.schema as Record<string, unknown>, entry.name);
+        this.schemas.set(entry.name, entry);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`Warning: skipping schema "${entry.name}": ${msg}\n`);
+      }
     }
   }
 

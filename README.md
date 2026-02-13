@@ -191,7 +191,7 @@ npm run build               # TypeScript compilation
 npm run typecheck           # Type check
 
 # Integration tests (requires RabbitMQ)
-docker compose up -d
+docker compose up -d --wait
 npm run test:integration
 ```
 

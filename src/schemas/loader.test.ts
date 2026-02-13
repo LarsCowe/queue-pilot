@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { loadSchemas } from "./loader.js";
@@ -191,11 +191,74 @@ describe("loadSchemas", () => {
     expect(result[0].description).toBe("");
   });
 
+  it("skips duplicate $id and warns to stderr", async () => {
+    const schema1 = {
+      $id: "payment.received",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Payment Received v1",
+      description: "First file with this $id",
+      version: "1.0.0",
+      type: "object",
+    };
+    const schema2 = {
+      $id: "payment.received",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Payment Received v2",
+      description: "Second file with the same $id",
+      version: "2.0.0",
+      type: "object",
+    };
+    writeFileSync(
+      join(tempDir, "payment-v1.json"),
+      JSON.stringify(schema1, null, 2),
+    );
+    writeFileSync(
+      join(tempDir, "payment-v2.json"),
+      JSON.stringify(schema2, null, 2),
+    );
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("payment.received");
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining("duplicate"),
+    );
+    stderrSpy.mockRestore();
+  });
+
   it("throws a clear error when directory does not exist", async () => {
     const nonExistentDir = join(tempDir, "does-not-exist");
 
     await expect(loadSchemas(nonExistentDir)).rejects.toThrow(
       `Schema directory not found: ${nonExistentDir}`,
     );
+  });
+
+  it("loads schemas from subdirectories recursively", async () => {
+    const subDir = join(tempDir, "events", "orders");
+    mkdirSync(subDir, { recursive: true });
+    const schema = {
+      $id: "order.shipped",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Order Shipped",
+      description: "Emitted when an order is shipped",
+      version: "1.0.0",
+      type: "object",
+      required: ["orderId"],
+      properties: {
+        orderId: { type: "string" },
+      },
+    };
+    writeFileSync(
+      join(subDir, "order.shipped.json"),
+      JSON.stringify(schema, null, 2),
+    );
+
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("order.shipped");
   });
 });
