@@ -30,4 +30,12 @@ describe("listExchanges", () => {
 
     expect(result.exchanges).toEqual([]);
   });
+
+  it("propagates errors from the RabbitMQ client", async () => {
+    const client = {
+      listExchanges: vi.fn().mockRejectedValue(new Error("Connection refused")),
+    } as unknown as RabbitMQClient;
+
+    await expect(listExchanges(client, "/")).rejects.toThrow("Connection refused");
+  });
 });

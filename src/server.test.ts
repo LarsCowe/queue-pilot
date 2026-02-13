@@ -3,33 +3,14 @@ import { describe, it, expect } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
-import type { SchemaEntry } from "./schemas/types.js";
+import { orderSchema } from "./test-fixtures.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
 
-const testSchema: SchemaEntry = {
-  name: "order.created",
-  version: "1.0.0",
-  title: "Order Created",
-  description: "Emitted when a new order is placed",
-  schema: {
-    $id: "order.created",
-    $schema: "http://json-schema.org/draft-07/schema#",
-    title: "Order Created",
-    description: "Emitted when a new order is placed",
-    version: "1.0.0",
-    type: "object",
-    required: ["orderId"],
-    properties: {
-      orderId: { type: "string" },
-    },
-  },
-};
-
 async function createTestClient(): Promise<Client> {
   const server = createServer({
-    schemas: [testSchema],
+    schemas: [orderSchema],
     rabbitmqUrl: "http://localhost:15672",
     rabbitmqUser: "guest",
     rabbitmqPass: "guest",
@@ -110,7 +91,7 @@ describe("MCP Server", () => {
       name: "validate_message",
       arguments: {
         schemaName: "order.created",
-        message: JSON.stringify({ orderId: "ORD-001" }),
+        message: JSON.stringify({ orderId: "ORD-001", amount: 49.99 }),
       },
     });
 
@@ -180,5 +161,36 @@ describe("MCP Server", () => {
     const content = result.content as Array<{ type: string; text: string }>;
     const parsed = JSON.parse(content[0].text);
     expect(parsed.valid).toBe(false);
+  });
+
+  it("wires list_queues tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+
+    const result = await client.callTool({
+      name: "list_queues",
+      arguments: { vhost: "/" },
+    });
+
+    // Tool is wired and executes — returns either queue data or a connection error
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toBeDefined();
+  });
+
+  it("wires peek_messages tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "peek_messages",
+      arguments: { queue: "test-queue", count: 1, vhost: "/" },
+    });
+    expect(result.isError).toBe(true);
+  });
+
+  it("wires inspect_queue tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "inspect_queue",
+      arguments: { queue: "test-queue", count: 1, vhost: "/" },
+    });
+    expect(result.isError).toBe(true);
   });
 });

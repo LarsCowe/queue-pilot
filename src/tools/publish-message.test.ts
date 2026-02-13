@@ -2,27 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { RabbitMQClient } from "../rabbitmq/client.js";
 import { SchemaValidator } from "../schemas/validator.js";
 import { publishMessage } from "./publish-message.js";
-import type { SchemaEntry } from "../schemas/types.js";
-
-const orderSchema: SchemaEntry = {
-  name: "order.created",
-  version: "1.0.0",
-  title: "Order Created",
-  description: "Emitted when a new order is placed",
-  schema: {
-    $id: "order.created",
-    $schema: "http://json-schema.org/draft-07/schema#",
-    title: "Order Created",
-    description: "Emitted when a new order is placed",
-    version: "1.0.0",
-    type: "object",
-    required: ["orderId", "amount"],
-    properties: {
-      orderId: { type: "string" },
-      amount: { type: "number" },
-    },
-  },
-};
+import { orderSchema } from "../test-fixtures.js";
 
 function mockClient(response: { routed: boolean } = { routed: true }): RabbitMQClient {
   return {

@@ -46,4 +46,12 @@ describe("peekMessages", () => {
     expect(result.count).toBe(0);
     expect(result.messages).toEqual([]);
   });
+
+  it("propagates errors from the RabbitMQ client", async () => {
+    const client = {
+      peekMessages: vi.fn().mockRejectedValue(new Error("Connection refused")),
+    } as unknown as RabbitMQClient;
+
+    await expect(peekMessages(client, "/", "orders", 5)).rejects.toThrow("Connection refused");
+  });
 });

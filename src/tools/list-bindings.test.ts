@@ -36,4 +36,12 @@ describe("listBindings", () => {
 
     expect(result.bindings).toEqual([]);
   });
+
+  it("propagates errors from the RabbitMQ client", async () => {
+    const client = {
+      listBindings: vi.fn().mockRejectedValue(new Error("Connection refused")),
+    } as unknown as RabbitMQClient;
+
+    await expect(listBindings(client, "/")).rejects.toThrow("Connection refused");
+  });
 });

@@ -58,4 +58,29 @@ describe("parseArgs", () => {
     expect(() => parseArgs([])).toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it("overrides rabbitmq-url when provided", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-url", "http://rabbit:15672"]);
+    expect(result.rabbitmqUrl).toBe("http://rabbit:15672");
+  });
+
+  it("overrides rabbitmq-user when provided", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-user", "admin"]);
+    expect(result.rabbitmqUser).toBe("admin");
+  });
+
+  it("overrides rabbitmq-pass when provided", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--rabbitmq-pass", "secret"]);
+    expect(result.rabbitmqPass).toBe("secret");
+  });
+
+  it("ignores unknown flags", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--unknown", "value"]);
+    expect(result.schemas).toBe("/tmp/schemas");
+    expect(result.rabbitmqUrl).toBe("http://localhost:15672");
+  });
 });
