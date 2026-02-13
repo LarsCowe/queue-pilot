@@ -4,9 +4,6 @@ import { z } from "zod";
 import { RabbitMQClient } from "./rabbitmq/client.js";
 import { SchemaValidator } from "./schemas/validator.js";
 import type { SchemaEntry } from "./schemas/types.js";
-
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json") as { version: string };
 import { listSchemas } from "./tools/list-schemas.js";
 import { getSchema } from "./tools/get-schema.js";
 import { validateMessage } from "./tools/validate-message.js";
@@ -19,6 +16,9 @@ import { publishMessage } from "./tools/publish-message.js";
 import { purgeQueue } from "./tools/purge-queue.js";
 import { createQueue } from "./tools/create-queue.js";
 import { createBinding } from "./tools/create-binding.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 export interface ServerConfig {
   schemas: SchemaEntry[];

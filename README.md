@@ -157,10 +157,10 @@ Schema matching: when inspecting a queue, the message's `type` property is used 
 
 ```bash
 npm install
-npm test                    # Unit tests (103 tests)
+npm test                    # Unit tests (118 tests)
 npm run test:coverage       # Coverage report
 npm run build               # TypeScript compilation
-npm run lint                # Type check
+npm run typecheck           # Type check
 
 # Integration tests (requires RabbitMQ)
 docker compose up -d

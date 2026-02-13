@@ -11,15 +11,18 @@ export interface ListSchemasResult {
 
 export function listSchemas(validator: SchemaValidator): ListSchemasResult {
   const names = validator.getSchemaNames();
-  const schemas = names.map((name) => {
-    const entry = validator.getSchema(name)!;
-    return {
-      name: entry.name,
-      version: entry.version,
-      title: entry.title,
-      description: entry.description,
-    };
-  });
+  const schemas = names
+    .map((name) => {
+      const entry = validator.getSchema(name);
+      if (!entry) return null;
+      return {
+        name: entry.name,
+        version: entry.version,
+        title: entry.title,
+        description: entry.description,
+      };
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null);
 
   return { schemas };
 }

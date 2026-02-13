@@ -59,6 +59,8 @@ export async function publishMessage(
   }
 
   // 2. Validate if requested and message_type is provided
+  let validation = baseResult.validation;
+
   if (validate && message_type) {
     const schemaEntry = validator.getSchema(message_type);
 
@@ -88,8 +90,11 @@ export async function publishMessage(
       };
     }
 
-    baseResult.validation.validated = true;
-    baseResult.validation.valid = true;
+    validation = {
+      ...baseResult.validation,
+      validated: true,
+      valid: true,
+    };
   }
 
   // 3. Publish via client
@@ -116,5 +121,6 @@ export async function publishMessage(
     ...baseResult,
     published: true,
     routed: response.routed,
+    validation,
   };
 }

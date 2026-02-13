@@ -193,4 +193,49 @@ describe("MCP Server", () => {
     });
     expect(result.isError).toBe(true);
   });
+
+  it("wires publish_message tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "publish_message",
+      arguments: {
+        exchange: "amq.default",
+        routing_key: "test-queue",
+        payload: JSON.stringify({ orderId: "ORD-999", amount: 10 }),
+        validate: false,
+      },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toBeDefined();
+  });
+
+  it("wires purge_queue tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "purge_queue",
+      arguments: { queue: "test-queue" },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toBeDefined();
+  });
+
+  it("wires create_queue tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "create_queue",
+      arguments: { queue: "test-queue-wiring" },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toBeDefined();
+  });
+
+  it("wires create_binding tool to the RabbitMQ client", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "create_binding",
+      arguments: { exchange: "amq.topic", queue: "test-queue" },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content[0].text).toBeDefined();
+  });
 });

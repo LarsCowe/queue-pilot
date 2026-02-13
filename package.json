@@ -1,6 +1,6 @@
 {
   "name": "queue-pilot",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation",
   "type": "module",
   "bin": {
@@ -15,8 +15,7 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
     "clean": "shx rm -rf dist",
@@ -25,7 +24,7 @@
     "test": "vitest run --exclude src/integration.test.ts",
     "test:watch": "vitest --exclude src/integration.test.ts",
     "test:coverage": "vitest run --coverage --exclude src/integration.test.ts",
-    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test:integration": "vitest run src/integration.test.ts",
     "prepublishOnly": "npm test && npm run build"
   },

@@ -2,31 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
-import type { SchemaEntry } from "./schemas/types.js";
+import { orderSchema } from "./test-fixtures.js";
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL ?? "http://localhost:15672";
 const RABBITMQ_USER = process.env.RABBITMQ_USER ?? "guest";
 const RABBITMQ_PASS = process.env.RABBITMQ_PASS ?? "guest";
-
-const orderSchema: SchemaEntry = {
-  name: "order.created",
-  version: "1.0.0",
-  title: "Order Created",
-  description: "Emitted when a new order is placed",
-  schema: {
-    $id: "order.created",
-    $schema: "http://json-schema.org/draft-07/schema#",
-    title: "Order Created",
-    description: "Emitted when a new order is placed",
-    version: "1.0.0",
-    type: "object",
-    required: ["orderId", "amount"],
-    properties: {
-      orderId: { type: "string" },
-      amount: { type: "number" },
-    },
-  },
-};
 
 async function createTestClient(): Promise<Client> {
   const server = createServer({

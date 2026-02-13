@@ -21,6 +21,6 @@ export function getSchema(
   return {
     found: true,
     name: entry.name,
-    schema: entry.schema as unknown as Record<string, unknown>,
+    schema: entry.schema,
   };
 }
