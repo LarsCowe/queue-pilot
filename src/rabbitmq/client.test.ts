@@ -189,14 +189,36 @@ describe("RabbitMQClient", () => {
   });
 
   it("purges a queue and returns the message count", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ messages_purged: 42 }),
-    });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            payload: '{"test":true}',
+            payload_encoding: "string",
+            properties: {},
+            exchange: "",
+            routing_key: "orders",
+            message_count: 41,
+            redelivered: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ ok: true });
+
+    globalThis.fetch = mockFetch;
 
     const result = await client.purgeQueue("/", "orders");
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:15672/api/queues/%2F/orders/get",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
       "http://localhost:15672/api/queues/%2F/orders/contents",
       expect.objectContaining({ method: "DELETE" }),
     );

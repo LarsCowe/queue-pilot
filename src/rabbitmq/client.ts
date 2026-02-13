@@ -91,10 +91,19 @@ export class RabbitMQClient {
     vhost: string,
     queue: string,
   ): Promise<PurgeResponse> {
-    return this.request<PurgeResponse>(
-      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}/contents`,
+    const encodedVhost = encodeVhost(vhost);
+    const encodedQueue = encodeURIComponent(queue);
+
+    const messages = await this.peekMessages(vhost, queue, 1);
+    const messageCount =
+      messages.length > 0 ? messages[0].message_count + 1 : 0;
+
+    await this.requestVoid(
+      `/api/queues/${encodedVhost}/${encodedQueue}/contents`,
       { method: "DELETE" },
     );
+
+    return { messages_purged: messageCount };
   }
 
   async createQueue(
