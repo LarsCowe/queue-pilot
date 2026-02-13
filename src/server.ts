@@ -45,7 +45,6 @@ export function createServer(config: ServerConfig): McpServer {
       const result = getSchema(validator, name);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        isError: !result.found,
       };
     },
   );
@@ -61,7 +60,6 @@ export function createServer(config: ServerConfig): McpServer {
       const result = validateMessage(validator, schemaName, message);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        isError: !result.valid,
       };
     },
   );

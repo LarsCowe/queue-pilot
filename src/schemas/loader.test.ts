@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -49,14 +49,33 @@ describe("loadSchemas", () => {
     expect(result).toEqual([]);
   });
 
-  it("rejects files that are not valid JSON", async () => {
+  it("skips corrupt JSON files and loads valid ones", async () => {
     writeFileSync(join(tempDir, "broken.json"), "not valid json {{{");
+    const validSchema = {
+      $id: "order.created",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Order Created",
+      description: "Emitted when a new order is placed",
+      version: "1.0.0",
+      type: "object",
+      required: ["orderId"],
+      properties: {
+        orderId: { type: "string" },
+      },
+    };
+    writeFileSync(
+      join(tempDir, "order.created.json"),
+      JSON.stringify(validSchema, null, 2),
+    );
 
-    await expect(loadSchemas(tempDir)).rejects.toThrow();
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("order.created");
   });
 
-  it("rejects schemas missing required $id field", async () => {
-    const schema = {
+  it("skips schemas missing $id and loads valid ones", async () => {
+    const missingId = {
       $schema: "http://json-schema.org/draft-07/schema#",
       title: "Missing ID",
       description: "No $id",
@@ -65,10 +84,37 @@ describe("loadSchemas", () => {
     };
     writeFileSync(
       join(tempDir, "missing-id.json"),
-      JSON.stringify(schema, null, 2),
+      JSON.stringify(missingId, null, 2),
+    );
+    const validSchema = {
+      $id: "valid.event",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Valid Event",
+      description: "A valid schema",
+      version: "1.0.0",
+      type: "object",
+    };
+    writeFileSync(
+      join(tempDir, "valid.event.json"),
+      JSON.stringify(validSchema, null, 2),
     );
 
-    await expect(loadSchemas(tempDir)).rejects.toThrow("$id");
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("valid.event");
+  });
+
+  it("warns to stderr when skipping a corrupt file", async () => {
+    writeFileSync(join(tempDir, "broken.json"), "not valid json {{{");
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    await loadSchemas(tempDir);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining("broken.json"),
+    );
+    stderrSpy.mockRestore();
   });
 
   it("ignores non-JSON files in the directory", async () => {
@@ -145,9 +191,11 @@ describe("loadSchemas", () => {
     expect(result[0].description).toBe("");
   });
 
-  it("throws when directory does not exist", async () => {
+  it("throws a clear error when directory does not exist", async () => {
     const nonExistentDir = join(tempDir, "does-not-exist");
 
-    await expect(loadSchemas(nonExistentDir)).rejects.toThrow();
+    await expect(loadSchemas(nonExistentDir)).rejects.toThrow(
+      `Schema directory not found: ${nonExistentDir}`,
+    );
   });
 });

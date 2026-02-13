@@ -119,17 +119,20 @@ describe("MCP Server", () => {
     expect(parsed.errors.length).toBeGreaterThan(0);
   });
 
-  it("returns isError for get_schema with unknown name", async () => {
+  it("does not set isError for get_schema with unknown name", async () => {
     const client = await createTestClient();
     const result = await client.callTool({
       name: "get_schema",
       arguments: { name: "nonexistent.schema" },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).toBeFalsy();
+    const content = result.content as Array<{ type: string; text: string }>;
+    const parsed = JSON.parse(content[0].text);
+    expect(parsed.found).toBe(false);
   });
 
-  it("returns isError for validate_message with unknown schema", async () => {
+  it("does not set isError for validate_message with unknown schema", async () => {
     const client = await createTestClient();
     const result = await client.callTool({
       name: "validate_message",
@@ -139,6 +142,25 @@ describe("MCP Server", () => {
       },
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).toBeFalsy();
+    const content = result.content as Array<{ type: string; text: string }>;
+    const parsed = JSON.parse(content[0].text);
+    expect(parsed.valid).toBe(false);
+  });
+
+  it("does not set isError for validate_message with invalid message", async () => {
+    const client = await createTestClient();
+    const result = await client.callTool({
+      name: "validate_message",
+      arguments: {
+        schemaName: "order.created",
+        message: JSON.stringify({}),
+      },
+    });
+
+    expect(result.isError).toBeFalsy();
+    const content = result.content as Array<{ type: string; text: string }>;
+    const parsed = JSON.parse(content[0].text);
+    expect(parsed.valid).toBe(false);
   });
 });

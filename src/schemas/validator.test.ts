@@ -150,6 +150,40 @@ describe("SchemaValidator", () => {
     expect(schema).toBeUndefined();
   });
 
+  it("handles schemas with custom keywords like x-category", () => {
+    const schemaWithCustomKeys: SchemaEntry = {
+      name: "inventory.updated",
+      version: "2.0.0",
+      title: "Inventory Updated",
+      description: "Emitted when inventory changes",
+      schema: {
+        $id: "inventory.updated",
+        $schema: "http://json-schema.org/draft-07/schema#",
+        title: "Inventory Updated",
+        description: "Emitted when inventory changes",
+        version: "2.0.0",
+        "x-category": "warehouse",
+        namespace: "inventory",
+        "x-owner": "logistics-team",
+        type: "object",
+        required: ["sku", "quantity"],
+        properties: {
+          sku: { type: "string" },
+          quantity: { type: "integer" },
+        },
+      },
+    };
+
+    const customValidator = new SchemaValidator([schemaWithCustomKeys]);
+
+    const result = customValidator.validate("inventory.updated", {
+      sku: "WIDGET-42",
+      quantity: 150,
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
   it("dispatches validation to the correct schema when multiple are loaded", () => {
     const orderSchema: SchemaEntry = {
       name: "order.created",

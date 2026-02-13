@@ -6,12 +6,59 @@ const require = createRequire(import.meta.url);
 const Ajv = require("ajv").default ?? require("ajv");
 const addFormats = require("ajv-formats").default ?? require("ajv-formats");
 
-const CUSTOM_KEYWORDS = new Set(["version"]);
+const JSON_SCHEMA_DRAFT07_KEYWORDS = new Set([
+  "$id",
+  "$schema",
+  "$ref",
+  "$comment",
+  "title",
+  "description",
+  "default",
+  "readOnly",
+  "writeOnly",
+  "examples",
+  "type",
+  "enum",
+  "const",
+  "properties",
+  "required",
+  "additionalProperties",
+  "patternProperties",
+  "propertyNames",
+  "minProperties",
+  "maxProperties",
+  "dependencies",
+  "items",
+  "additionalItems",
+  "contains",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "not",
+  "if",
+  "then",
+  "else",
+  "format",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "contentMediaType",
+  "contentEncoding",
+  "definitions",
+]);
 
-function stripCustomKeywords(schema: SchemaDefinition): Record<string, unknown> {
+function stripNonStandardKeywords(schema: SchemaDefinition): Record<string, unknown> {
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
-    if (!CUSTOM_KEYWORDS.has(key)) {
+    if (JSON_SCHEMA_DRAFT07_KEYWORDS.has(key)) {
       cleaned[key] = value;
     }
   }
@@ -30,7 +77,7 @@ export class SchemaValidator {
 
     for (const entry of schemas) {
       this.schemas.set(entry.name, entry);
-      this.ajv.addSchema(stripCustomKeywords(entry.schema), entry.name);
+      this.ajv.addSchema(stripNonStandardKeywords(entry.schema), entry.name);
     }
   }
 
