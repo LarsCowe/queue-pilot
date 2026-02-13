@@ -2,7 +2,7 @@
 
 MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation.
 
-Designed for integration projects where multiple teams communicate via RabbitMQ: inspect queues, view messages, and validate payloads against agreed-upon schemas — all from within Claude.
+Designed for integration projects where multiple teams communicate via RabbitMQ: inspect queues, view messages, and validate payloads against agreed-upon schemas — all from your AI assistant.
 
 ## Features
 
@@ -34,9 +34,9 @@ Create JSON Schema files in a directory:
 }
 ```
 
-### 2. Configure in Claude Code
+### 2. Add to your MCP client
 
-Add to your Claude Code MCP settings:
+Add the following server configuration to your MCP client:
 
 ```json
 {
@@ -54,6 +54,19 @@ Add to your Claude Code MCP settings:
   }
 }
 ```
+
+<details>
+<summary>Where does this config go?</summary>
+
+| Client | Config file |
+|--------|------------|
+| Claude Code | `.claude/mcp.json` (project) or `~/.claude/mcp.json` (global) |
+| Claude Desktop | `claude_desktop_config.json` |
+| Cursor | `.cursor/mcp.json` |
+| VS Code (Copilot) | `.vscode/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+
+</details>
 
 <details>
 <summary>Development (running from source)</summary>
@@ -78,9 +91,9 @@ Add to your Claude Code MCP settings:
 
 </details>
 
-### 3. Use with Claude
+### 3. Use it
 
-Ask Claude things like:
+Ask your assistant things like:
 
 - "Which queues are there and how many messages do they have?"
 - "Show me the messages in the orders queue"
