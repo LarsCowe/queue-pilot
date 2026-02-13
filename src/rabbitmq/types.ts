@@ -45,3 +45,18 @@ export interface BindingInfo {
   routing_key: string;
   vhost: string;
 }
+
+export interface PublishMessageBody {
+  routing_key: string;
+  payload: string;
+  payload_encoding: string;
+  properties: Record<string, unknown>;
+}
+
+export interface PublishResponse {
+  routed: boolean;
+}
+
+export interface PurgeResponse {
+  messages_purged: number;
+}

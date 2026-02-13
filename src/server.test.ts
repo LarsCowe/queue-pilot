@@ -64,6 +64,8 @@ describe("MCP Server", () => {
     const toolNames = tools.map((t) => t.name).sort();
 
     expect(toolNames).toEqual([
+      "create_binding",
+      "create_queue",
       "get_schema",
       "inspect_queue",
       "list_bindings",
@@ -71,6 +73,8 @@ describe("MCP Server", () => {
       "list_queues",
       "list_schemas",
       "peek_messages",
+      "publish_message",
+      "purge_queue",
       "validate_message",
     ]);
   });

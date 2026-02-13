@@ -4,6 +4,9 @@ import type {
   QueueMessage,
   ExchangeInfo,
   BindingInfo,
+  PublishMessageBody,
+  PublishResponse,
+  PurgeResponse,
 } from "./types.js";
 
 function encodeVhost(vhost: string): string {
@@ -28,7 +31,7 @@ export class RabbitMQClient {
     };
   }
 
-  private async request<T>(path: string, options?: RequestInit): Promise<T> {
+  private async rawRequest(path: string, options?: RequestInit): Promise<Response> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers: { ...this.headers(), ...options?.headers },
@@ -40,7 +43,16 @@ export class RabbitMQClient {
       );
     }
 
+    return response;
+  }
+
+  private async request<T>(path: string, options?: RequestInit): Promise<T> {
+    const response = await this.rawRequest(path, options);
     return response.json() as Promise<T>;
+  }
+
+  private async requestVoid(path: string, options?: RequestInit): Promise<void> {
+    await this.rawRequest(path, options);
   }
 
   async listQueues(vhost: string): Promise<QueueInfo[]> {
@@ -73,5 +85,58 @@ export class RabbitMQClient {
 
   async listBindings(vhost: string): Promise<BindingInfo[]> {
     return this.request<BindingInfo[]>(`/api/bindings/${encodeVhost(vhost)}`);
+  }
+
+  async purgeQueue(
+    vhost: string,
+    queue: string,
+  ): Promise<PurgeResponse> {
+    return this.request<PurgeResponse>(
+      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}/contents`,
+      { method: "DELETE" },
+    );
+  }
+
+  async createQueue(
+    vhost: string,
+    queue: string,
+    options: { durable: boolean; auto_delete: boolean },
+  ): Promise<void> {
+    return this.requestVoid(
+      `/api/queues/${encodeVhost(vhost)}/${encodeURIComponent(queue)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(options),
+      },
+    );
+  }
+
+  async createBinding(
+    vhost: string,
+    exchange: string,
+    queue: string,
+    routingKey: string,
+  ): Promise<void> {
+    return this.requestVoid(
+      `/api/bindings/${encodeVhost(vhost)}/e/${encodeURIComponent(exchange)}/q/${encodeURIComponent(queue)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ routing_key: routingKey }),
+      },
+    );
+  }
+
+  async publishMessage(
+    vhost: string,
+    exchange: string,
+    body: PublishMessageBody,
+  ): Promise<PublishResponse> {
+    return this.request<PublishResponse>(
+      `/api/exchanges/${encodeVhost(vhost)}/${encodeURIComponent(exchange)}/publish`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
   }
 }

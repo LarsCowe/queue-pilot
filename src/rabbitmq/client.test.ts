@@ -187,4 +187,170 @@ describe("RabbitMQClient", () => {
 
     await expect(client.listQueues("/")).rejects.toThrow("ECONNREFUSED");
   });
+
+  it("purges a queue and returns the message count", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages_purged: 42 }),
+    });
+
+    const result = await client.purgeQueue("/", "orders");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/orders/contents",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(result).toEqual({ messages_purged: 42 });
+  });
+
+  it("creates a queue with options", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.createQueue("/", "new-queue", {
+      durable: false,
+      auto_delete: true,
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/new-queue",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ durable: false, auto_delete: true }),
+      }),
+    );
+  });
+
+  it("throws on error from void endpoint", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      statusText: "Conflict",
+    });
+
+    await expect(
+      client.createQueue("/", "existing-queue", {
+        durable: true,
+        auto_delete: false,
+      }),
+    ).rejects.toThrow("409");
+  });
+
+  it("creates a binding between an exchange and a queue", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+    });
+
+    await client.createBinding("/", "events", "orders", "order.#");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/bindings/%2F/e/events/q/orders",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ routing_key: "order.#" }),
+      }),
+    );
+  });
+
+  it("publishes a message to an exchange", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ routed: true }),
+    });
+
+    const result = await client.publishMessage("/", "events", {
+      routing_key: "order.created",
+      payload: '{"orderId":"ORD-001"}',
+      payload_encoding: "string",
+      properties: {
+        content_type: "application/json",
+        type: "order.created",
+      },
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/exchanges/%2F/events/publish",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          routing_key: "order.created",
+          payload: '{"orderId":"ORD-001"}',
+          payload_encoding: "string",
+          properties: {
+            content_type: "application/json",
+            type: "order.created",
+          },
+        }),
+      }),
+    );
+    expect(result).toEqual({ routed: true });
+  });
+
+  it("encodes exchange name in publish URL", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ routed: true }),
+    });
+
+    await client.publishMessage("/", "amq.default", {
+      routing_key: "my-queue",
+      payload: "{}",
+      payload_encoding: "string",
+      properties: {},
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/exchanges/%2F/amq.default/publish",
+      expect.any(Object),
+    );
+  });
+
+  it("encodes special characters in queue names", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    });
+
+    await client.createQueue("/", "events/dead-letter#1", {
+      durable: true,
+      auto_delete: false,
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:15672/api/queues/%2F/events%2Fdead-letter%231",
+      expect.any(Object),
+    );
+  });
+
+  it("throws on error when creating a binding", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+    });
+
+    await expect(
+      client.createBinding("/", "nonexistent", "orders", "order.#"),
+    ).rejects.toThrow("404");
+  });
+
+  it("throws on error when publishing a message", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+    });
+
+    await expect(
+      client.publishMessage("/", "events", {
+        routing_key: "order.created",
+        payload: '{"orderId":"ORD-001"}',
+        payload_encoding: "string",
+        properties: {},
+      }),
+    ).rejects.toThrow("500");
+  });
 });

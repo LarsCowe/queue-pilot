@@ -9,6 +9,8 @@ Designed for integration projects where multiple teams communicate via RabbitMQ:
 - **Message Inspection** — Browse queues, peek at messages without consuming them
 - **Schema Validation** — Validate message payloads against JSON Schema definitions
 - **Combined Inspection** — `inspect_queue` peeks messages AND validates each against its schema
+- **Validated Publishing** — `publish_message` validates against a schema before sending — invalid messages never hit the broker
+- **Queue Management** — Create queues, bindings, and purge messages for dev/test workflows
 - **Broker Info** — List exchanges and bindings to understand message routing
 
 ## Quick Start
@@ -100,8 +102,13 @@ Ask your assistant things like:
 - "Inspect the registration queue and check if all messages are valid"
 - "What schemas are available?"
 - "Validate this message against the order.created schema"
+- "Publish an order.created event to the events exchange"
+- "Create a queue called dead-letters and bind it to the events exchange"
+- "Purge all messages from the orders queue"
 
 ## MCP Tools
+
+### Read
 
 | Tool | Description |
 |------|-------------|
@@ -113,6 +120,15 @@ Ask your assistant things like:
 | `inspect_queue` | Peek messages + validate each against its schema |
 | `list_exchanges` | List all RabbitMQ exchanges |
 | `list_bindings` | List bindings between exchanges and queues |
+
+### Write
+
+| Tool | Description |
+|------|-------------|
+| `publish_message` | Publish a message to an exchange with optional schema validation gate |
+| `purge_queue` | Remove all messages from a queue (returns count purged) |
+| `create_queue` | Create a new queue (idempotent if settings match) |
+| `create_binding` | Bind a queue to an exchange with a routing key |
 
 ## Schema Format
 
@@ -137,7 +153,7 @@ Schema matching: when inspecting a queue, the message's `type` property is used 
 
 ```bash
 npm install
-npm test                    # Unit tests (61 tests)
+npm test                    # Unit tests (99 tests)
 npm run test:coverage       # Coverage report
 npm run build               # TypeScript compilation
 npm run lint                # Type check
