@@ -15,10 +15,12 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
-    "build": "tsc && shx chmod +x dist/index.js",
+    "clean": "shx rm -rf dist",
+    "build": "npm run clean && tsc && shx chmod +x dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest run --exclude src/integration.test.ts",
     "test:watch": "vitest --exclude src/integration.test.ts",

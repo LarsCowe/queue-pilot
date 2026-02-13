@@ -22,8 +22,9 @@ Designed for integration projects where multiple teams communicate via RabbitMQ:
 
 Create JSON Schema files in a directory:
 
+`schemas/order.created.json`:
+
 ```json
-// schemas/order.created.json
 {
   "$id": "order.created",
   "$schema": "http://json-schema.org/draft-07/schema#",

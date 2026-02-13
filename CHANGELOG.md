@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1] — 2026-02-13
+
+### Fixed
+- Corrected bin path in package.json for npm global installs
+
+### Changed
+- Added npm version and license badges to README
+
 ## [0.2.0] — 2026-02-13
 
 ### Added
