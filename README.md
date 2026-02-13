@@ -153,7 +153,7 @@ Schema matching: when inspecting a queue, the message's `type` property is used 
 
 ```bash
 npm install
-npm test                    # Unit tests (99 tests)
+npm test                    # Unit tests (103 tests)
 npm run test:coverage       # Coverage report
 npm run build               # TypeScript compilation
 npm run lint                # Type check
