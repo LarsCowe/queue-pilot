@@ -10,7 +10,7 @@ const RABBITMQ_USER = process.env.RABBITMQ_USER ?? "guest";
 const RABBITMQ_PASS = process.env.RABBITMQ_PASS ?? "guest";
 
 async function createTestClient(): Promise<Client> {
-  const { adapter, tools } = createAdapter({
+  const { adapter, tools } = await createAdapter({
     broker: "rabbitmq",
     url: RABBITMQ_URL,
     username: RABBITMQ_USER,
