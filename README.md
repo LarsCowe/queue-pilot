@@ -2,6 +2,10 @@
 
 [![npm version](https://img.shields.io/npm/v/queue-pilot)](https://www.npmjs.com/package/queue-pilot)
 [![license](https://img.shields.io/npm/l/queue-pilot)](LICENSE)
+[![CI](https://github.com/LarsCowe/queue-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsCowe/queue-pilot/actions/workflows/ci.yml)
+[![npm downloads](https://img.shields.io/npm/dm/queue-pilot)](https://www.npmjs.com/package/queue-pilot)
+[![node](https://img.shields.io/node/v/queue-pilot)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 
 MCP server for message queue development — combines message inspection with JSON Schema validation. Supports **RabbitMQ** and **Kafka**.
 

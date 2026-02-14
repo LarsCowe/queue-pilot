@@ -1,5 +1,43 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [0.5.0] — 2026-02-14
+
+### Added
+- Apache Kafka adapter — full broker support via `@confluentinc/kafka-javascript`
+- `KafkaClient` wrapping the Confluent Kafka JavaScript library
+- 4 Kafka-specific tools: `list_consumer_groups`, `describe_consumer_group`, `list_partitions`, `get_offsets`
+- Multi-broker support — run Queue Pilot against RabbitMQ or Kafka with the same tool interface
+
+### Changed
+- `createAdapter` factory is now async to support Kafka client initialization
+- Integration tests updated for async adapter creation
+
+### Fixed
+- Relaxed `purge_queue` integration test assertion for cross-broker compatibility
+
+## [0.4.0] — 2026-02-13
+
+### Added
+- `BrokerAdapter` interface for multi-broker support with capability type guards
+- Capability interfaces: `Publishable`, `Purgeable`, `Creatable`, `Deletable`, `Overviewable`, `HealthCheckable`, `Consumerable`, `Connectable`
+- Factory pattern (`createAdapter`) for creating broker-specific adapters from config
+- `init` subcommand — generates MCP client configuration for Claude Code, Claude Desktop, Cursor, VS Code (Copilot), Windsurf, and generic JSON
+- Kafka CLI arguments (`--kafka-brokers`, `--kafka-client-id`, `--kafka-sasl-*`) and environment variables in init output
+- Startup health check against the configured broker
+
+### Changed
+- Tool registration moved to `src/broker/registry.ts` with dynamic tool sets based on adapter capabilities
+- Tool count increased from 21 to 25 (14 universal + 7 RabbitMQ-specific + 4 Kafka-specific)
+
+### Fixed
+- RabbitMQ purge endpoint 204 No Content handling improved
+
 ## [0.3.0] — 2026-02-13
 
 ### Added
@@ -121,3 +159,15 @@
 - `list_queues`, `peek_messages`, `inspect_queue`
 - `list_exchanges`, `list_bindings`
 - `list_schemas`, `get_schema`, `validate_message`
+
+[Unreleased]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.4...v0.3.0
+[0.2.4]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/LarsCowe/queue-pilot/compare/v0.1.0...v0.1.2
+[0.1.0]: https://github.com/LarsCowe/queue-pilot/releases/tag/v0.1.0

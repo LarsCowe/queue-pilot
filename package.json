@@ -15,8 +15,7 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
     "clean": "shx rm -rf dist",
@@ -39,12 +38,17 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "rabbitmq",
     "kafka",
     "message-queue",
+    "message-broker",
     "schema-validation",
-    "json-schema"
+    "json-schema",
+    "amqp"
   ],
+  "mcpName": "io.github.larscowe/queue-pilot",
   "author": "Lars",
   "license": "MIT",
   "engines": {
