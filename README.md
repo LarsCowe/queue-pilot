@@ -11,6 +11,10 @@ MCP server for message queue development — combines message inspection with JS
 
 Designed for integration projects where multiple teams communicate via message brokers: inspect queues/topics, view messages, and validate payloads against agreed-upon schemas — all from your AI assistant.
 
+<p align="center">
+  <img src="docs/queue-pilot-diagram.svg" alt="Queue Pilot architecture: MCP clients connect to Queue Pilot, which interfaces with RabbitMQ and Kafka" width="720">
+</p>
+
 ## Features
 
 - **Multi-broker support** — RabbitMQ and Apache Kafka via a unified adapter interface
