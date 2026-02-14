@@ -30,7 +30,7 @@ Designed for integration projects where multiple teams communicate via message b
 - **Node.js >= 22** — Required runtime ([check with `node --version`](https://nodejs.org/))
 - **A message broker:**
   - **RabbitMQ** with the [management plugin](https://www.rabbitmq.com/docs/management) enabled (HTTP API on port 15672), or
-  - **Apache Kafka** (requires `@confluentinc/kafka-javascript` — install separately: `npm install @confluentinc/kafka-javascript`)
+  - **Apache Kafka** (requires `@confluentinc/kafka-javascript` — see [Kafka setup](#kafka-with-npx) below)
 - **An MCP-compatible client** — Claude Code, Claude Desktop, Cursor, VS Code (Copilot), Windsurf, etc.
 
 ## Quick Start
@@ -68,6 +68,20 @@ npx queue-pilot init --schemas /absolute/path/to/your/schemas
 # Kafka
 npx queue-pilot init --schemas /absolute/path/to/your/schemas --broker kafka
 ```
+
+> [!IMPORTANT]
+> **Kafka with npx** <a id="kafka-with-npx"></a>
+>
+> `@confluentinc/kafka-javascript` is an optional peer dependency. Plain `npx queue-pilot` won't install it, so Kafka mode will fail at runtime. Use one of these approaches:
+>
+> ```bash
+> # Option 1: npx with explicit packages
+> npx -y --package=@confluentinc/kafka-javascript --package=queue-pilot queue-pilot --schemas ./schemas --broker kafka
+>
+> # Option 2: global install
+> npm install -g queue-pilot @confluentinc/kafka-javascript
+> queue-pilot --schemas ./schemas --broker kafka
+> ```
 
 For a specific client, use `--client`:
 
@@ -131,6 +145,8 @@ Add the following server configuration to your MCP client:
       "command": "npx",
       "args": [
         "-y",
+        "--package=@confluentinc/kafka-javascript",
+        "--package=queue-pilot",
         "queue-pilot",
         "--schemas", "/absolute/path/to/your/schemas",
         "--broker", "kafka"
@@ -147,7 +163,7 @@ Add the following server configuration to your MCP client:
 
 | Client | Config file |
 |--------|------------|
-| Claude Code | `.claude/mcp.json` (project) or `~/.claude/mcp.json` (global) |
+| Claude Code | `.mcp.json` (project) or `~/.claude.json` (user) |
 | Claude Desktop | `claude_desktop_config.json` |
 | Cursor | `.cursor/mcp.json` |
 | VS Code (Copilot) | `.vscode/mcp.json` (uses `"servers"` instead of `"mcpServers"`) |

@@ -6,6 +6,7 @@ import {
   formatConfig,
   getConfigHint,
   handleInit,
+  shellQuote,
 } from "./init.js";
 
 describe("parseInitArgs", () => {
@@ -126,6 +127,28 @@ describe("parseInitArgs", () => {
     const absPath = path.resolve("/tmp/schemas");
     const result = parseInitArgs(["--schemas", absPath, "--broker", "kafka"]);
     expect(result.broker).toBe("kafka");
+  });
+
+  it("exits 1 for unsupported broker", () => {
+    const absPath = path.resolve("/tmp/schemas");
+    expect(() =>
+      parseInitArgs(["--schemas", absPath, "--broker", "rabbitmqq"]),
+    ).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(stderrSpy.mock.calls.map((c) => c[0]).join("")).toContain(
+      "unsupported broker",
+    );
+  });
+
+  it("warns on unknown flags", () => {
+    vi.restoreAllMocks();
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const absPath = path.resolve("/tmp/schemas");
+    parseInitArgs(["--schemas", absPath, "--unknown-flag"]);
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+    expect(output).toContain("Warning: unknown argument '--unknown-flag'");
   });
 
   it("parses Kafka CLI args", () => {
@@ -328,6 +351,56 @@ describe("formatConfig", () => {
     expect(parsed.mcpServers["queue-pilot"].env).toBeDefined();
     expect(parsed.mcpServers["queue-pilot"].env.RABBITMQ_USER).toBe("admin");
   });
+
+  it("quotes schema path with spaces in claude-code format", () => {
+    const config = {
+      command: "npx" as const,
+      args: ["-y", "queue-pilot", "--schemas", "/home/my user/schemas"],
+    };
+    const output = formatConfig(config, "claude-code");
+    expect(output).toContain("'/home/my user/schemas'");
+  });
+
+  it("normalizes Windows backslashes to forward slashes in claude-code format", () => {
+    const config = {
+      command: "npx" as const,
+      args: ["-y", "queue-pilot", "--schemas", "C:\\Users\\Lars\\schemas"],
+    };
+    const output = formatConfig(config, "claude-code");
+    expect(output).toContain("C:/Users/Lars/schemas");
+    expect(output).not.toContain("\\");
+  });
+
+  it("quotes env values with special characters in claude-code format", () => {
+    const config = {
+      ...baseConfig,
+      env: { RABBITMQ_PASS: "p@ss$word with spaces" },
+    };
+    const output = formatConfig(config, "claude-code");
+    expect(output).toContain("RABBITMQ_PASS='p@ss$word with spaces'");
+  });
+
+  it("does not quote simple env values in claude-code format", () => {
+    const config = {
+      ...baseConfig,
+      env: { RABBITMQ_USER: "admin" },
+    };
+    const output = formatConfig(config, "claude-code");
+    expect(output).toContain("RABBITMQ_USER=admin");
+    expect(output).not.toContain("'admin'");
+  });
+
+  it("does not alter paths in JSON config formats", () => {
+    const config = {
+      command: "npx" as const,
+      args: ["-y", "queue-pilot", "--schemas", "C:\\Users\\Lars\\schemas"],
+    };
+    const output = formatConfig(config, "generic");
+    const parsed = JSON.parse(output);
+    expect(parsed.mcpServers["queue-pilot"].args).toContain(
+      "C:\\Users\\Lars\\schemas",
+    );
+  });
 });
 
 describe("getConfigHint", () => {
@@ -397,5 +470,35 @@ describe("handleInit", () => {
     const stdout = stdoutSpy.mock.calls.map((c) => c[0]).join("");
     expect(stdout).toContain("--broker");
     expect(stdout).toContain("kafka");
+  });
+});
+
+describe("shellQuote", () => {
+  it("returns simple values unquoted", () => {
+    expect(shellQuote("admin")).toBe("admin");
+  });
+
+  it("returns paths without special chars unquoted", () => {
+    expect(shellQuote("/home/user/schemas")).toBe("/home/user/schemas");
+  });
+
+  it("quotes values with spaces", () => {
+    expect(shellQuote("/my path/schemas")).toBe("'/my path/schemas'");
+  });
+
+  it("quotes values with dollar sign", () => {
+    expect(shellQuote("p@ss$word")).toBe("'p@ss$word'");
+  });
+
+  it("quotes values with backslashes", () => {
+    expect(shellQuote("C:\\Users\\Lars")).toBe("'C:\\Users\\Lars'");
+  });
+
+  it("escapes single quotes inside values", () => {
+    expect(shellQuote("it's")).toBe("'it'\\''s'");
+  });
+
+  it("quotes values with exclamation mark", () => {
+    expect(shellQuote("hello!")).toBe("'hello!'");
   });
 });

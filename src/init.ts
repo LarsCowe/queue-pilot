@@ -1,5 +1,14 @@
 import path from "path";
 
+const SHELL_SPECIAL = /[\s\\$`!'"#&|;()<>~*?{}[\]]/;
+
+export function shellQuote(value: string): string {
+  if (!SHELL_SPECIAL.test(value)) {
+    return value;
+  }
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
 export type ClientFormat =
   | "generic"
   | "claude-code"
@@ -7,6 +16,8 @@ export type ClientFormat =
   | "cursor"
   | "vscode"
   | "windsurf";
+
+const SUPPORTED_BROKERS = ["rabbitmq", "kafka"] as const;
 
 const SUPPORTED_CLIENTS: ClientFormat[] = [
   "generic",
@@ -113,6 +124,16 @@ export function parseInitArgs(argv: string[]): InitArgs {
           process.stderr.write("Error: --broker requires a value\n");
           process.exit(1);
         }
+        if (
+          !SUPPORTED_BROKERS.includes(
+            value as (typeof SUPPORTED_BROKERS)[number],
+          )
+        ) {
+          process.stderr.write(
+            `Error: unsupported broker '${value}'. Supported: ${SUPPORTED_BROKERS.join(", ")}\n`,
+          );
+          process.exit(1);
+        }
         args.broker = value;
         break;
       }
@@ -186,6 +207,13 @@ export function parseInitArgs(argv: string[]): InitArgs {
           process.exit(1);
         }
         args.kafkaSaslPassword = value;
+        break;
+      }
+      default: {
+        const arg = argv[i];
+        if (arg?.startsWith("--")) {
+          process.stderr.write(`Warning: unknown argument '${arg}'\n`);
+        }
         break;
       }
     }
@@ -275,12 +303,14 @@ export function formatConfig(config: McpConfig, client: ClientFormat): string {
     const parts = ["claude mcp add --transport stdio"];
     if (config.env) {
       for (const [key, value] of Object.entries(config.env)) {
-        parts.push(`--env ${key}=${value}`);
+        parts.push(`--env ${key}=${shellQuote(value)}`);
       }
     }
     parts.push("queue-pilot");
     parts.push("--");
-    parts.push(...config.args);
+    for (const arg of config.args) {
+      parts.push(shellQuote(arg.replace(/\\/g, "/")));
+    }
     return parts.join(" ");
   }
 

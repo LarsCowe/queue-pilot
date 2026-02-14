@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-02-14
+
+### Fixed
+- `claude-code` init output now shell-quotes paths with spaces and env values with special characters
+- Windows backslash paths normalized to forward slashes in `claude-code` init output
+- `--broker` flag now validates against supported brokers (rejects typos like `--broker rabbitmqq`)
+- Unknown flags in `init` now produce a warning instead of being silently ignored
+- Claude Code config paths corrected in README (`.mcp.json` / `~/.claude.json`)
+- Kafka npx peer dependency issue documented with `--package=` workaround
+
+## [0.5.1] — 2026-02-14
+
+### Changed
+- Published to MCP Registry
+- Added architecture diagram to README
+
 ## [0.5.0] — 2026-02-14
 
 ### Added
@@ -160,7 +176,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - `list_exchanges`, `list_bindings`
 - `list_schemas`, `get_schema`, `validate_message`
 
-[Unreleased]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.2.4...v0.3.0
