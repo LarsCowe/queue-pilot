@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import type { SchemaValidator } from "../schemas/validator.js";
 
 export interface PublishMessageParams {
@@ -25,7 +25,7 @@ export interface PublishMessageResult {
 }
 
 export async function publishMessage(
-  client: RabbitMQClient,
+  adapter: BrokerAdapter,
   validator: SchemaValidator,
   params: PublishMessageParams,
 ): Promise<PublishMessageResult> {
@@ -97,7 +97,7 @@ export async function publishMessage(
     };
   }
 
-  // 3. Publish via client
+  // 3. Publish via adapter
   const properties: Record<string, unknown> = {
     content_type: "application/json",
   };
@@ -110,11 +110,12 @@ export async function publishMessage(
     properties.headers = headers;
   }
 
-  const response = await client.publishMessage(vhost, exchange, {
+  const response = await adapter.publishMessage({
+    destination: exchange,
     routing_key,
     payload,
-    payload_encoding: "string",
     properties,
+    scope: vhost,
   });
 
   return {

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { ConsumerCapability } from "../broker/types.js";
 import { listConsumers } from "./list-consumers.js";
 
 describe("listConsumers", () => {
   it("returns consumers with flattened details", async () => {
-    const client = {
+    const adapter: ConsumerCapability = {
       listConsumers: vi.fn().mockResolvedValue([
         {
           queue: { name: "order-events" },
@@ -21,9 +21,9 @@ describe("listConsumers", () => {
           prefetch_count: 0,
         },
       ]),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await listConsumers(client, "/");
+    const result = await listConsumers(adapter, "/");
 
     expect(result.consumers).toHaveLength(2);
     expect(result.consumers[0]).toEqual({
@@ -40,27 +40,27 @@ describe("listConsumers", () => {
       ack_required: false,
       prefetch_count: 0,
     });
-    expect(client.listConsumers).toHaveBeenCalledWith("/");
+    expect(adapter.listConsumers).toHaveBeenCalledWith("/");
   });
 
   it("returns empty list when no consumers exist", async () => {
-    const client = {
+    const adapter: ConsumerCapability = {
       listConsumers: vi.fn().mockResolvedValue([]),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await listConsumers(client, "/");
+    const result = await listConsumers(adapter, "/");
 
     expect(result.consumers).toEqual([]);
   });
 
-  it("propagates errors from the RabbitMQ client", async () => {
-    const client = {
+  it("propagates errors from the adapter", async () => {
+    const adapter: ConsumerCapability = {
       listConsumers: vi
         .fn()
         .mockRejectedValue(new Error("RabbitMQ API error: 401 Unauthorized")),
-    } as unknown as RabbitMQClient;
+    };
 
-    await expect(listConsumers(client, "/")).rejects.toThrow(
+    await expect(listConsumers(adapter, "/")).rejects.toThrow(
       "RabbitMQ API error: 401 Unauthorized",
     );
   });

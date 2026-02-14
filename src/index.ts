@@ -4,24 +4,25 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadSchemas } from "./schemas/loader.js";
-import { RabbitMQClient } from "./rabbitmq/client.js";
+import { createAdapter } from "./broker/factory.js";
 import { createServer } from "./server.js";
 import { handleInit } from "./init.js";
 import {
   checkNodeVersion,
   checkSchemaCount,
-  checkRabbitMQConnectivity,
+  checkBrokerConnectivity,
 } from "./startup.js";
 import { VERSION } from "./version.js";
 
 export interface CliArgs {
   schemas: string;
+  broker: string;
   rabbitmqUrl: string;
   rabbitmqUser: string;
   rabbitmqPass: string;
 }
 
-const HELP_TEXT = `Queue Pilot - MCP server for RabbitMQ message inspection and schema validation
+const HELP_TEXT = `Queue Pilot - MCP server for message queue inspection and schema validation
 
 Usage: queue-pilot --schemas <directory> [options]
        queue-pilot init --schemas <directory> [--client <name>]
@@ -31,6 +32,7 @@ Commands:
 
 Options:
   --schemas <dir>        Directory containing JSON Schema files (required)
+  --broker <type>        Broker type (default: rabbitmq)
   --rabbitmq-url <url>   RabbitMQ Management API URL (default: http://localhost:15672)
   --rabbitmq-user <user> RabbitMQ username (default: guest)
   --rabbitmq-pass <pass> RabbitMQ password (default: guest)
@@ -65,6 +67,15 @@ export function parseArgs(argv: string[]): CliArgs {
           process.exit(1);
         }
         args.schemas = value;
+        break;
+      }
+      case "--broker": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --broker requires a value\n");
+          process.exit(1);
+        }
+        args.broker = value;
         break;
       }
       case "--rabbitmq-url": {
@@ -111,6 +122,7 @@ export function parseArgs(argv: string[]): CliArgs {
 
   return {
     schemas: args.schemas,
+    broker: args.broker ?? "rabbitmq",
     rabbitmqUrl: args.rabbitmqUrl ?? process.env.RABBITMQ_URL ?? "http://localhost:15672",
     rabbitmqUser: args.rabbitmqUser ?? process.env.RABBITMQ_USER ?? "guest",
     rabbitmqPass: args.rabbitmqPass ?? process.env.RABBITMQ_PASS ?? "guest",
@@ -139,27 +151,28 @@ async function main(): Promise<void> {
     process.stderr.write(`Warning: ${schemaCheck.warning}\n`);
   }
 
-  const client = new RabbitMQClient({
+  const { adapter, tools } = createAdapter({
+    broker: args.broker as "rabbitmq",
     url: args.rabbitmqUrl,
     username: args.rabbitmqUser,
     password: args.rabbitmqPass,
   });
-  const rabbitCheck = await checkRabbitMQConnectivity(() =>
-    client.checkHealth(),
+
+  const brokerCheck = await checkBrokerConnectivity(() =>
+    adapter.checkHealth(),
   );
-  if (rabbitCheck.reachable) {
-    process.stderr.write(`RabbitMQ: ${rabbitCheck.message}\n`);
+  if (brokerCheck.reachable) {
+    process.stderr.write(`Broker: ${brokerCheck.message}\n`);
   } else {
     process.stderr.write(
-      `Warning: RabbitMQ not reachable (${rabbitCheck.message}) — server will start but queue tools will fail\n`,
+      `Warning: Broker not reachable (${brokerCheck.message}) — server will start but queue tools will fail\n`,
     );
   }
 
   const server = createServer({
     schemas,
-    rabbitmqUrl: args.rabbitmqUrl,
-    rabbitmqUser: args.rabbitmqUser,
-    rabbitmqPass: args.rabbitmqPass,
+    adapter,
+    brokerTools: tools,
     version: VERSION,
   });
 

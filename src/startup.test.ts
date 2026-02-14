@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   checkNodeVersion,
   checkSchemaCount,
-  checkRabbitMQConnectivity,
+  checkBrokerConnectivity,
 } from "./startup.js";
-import type { HealthCheckResponse } from "./rabbitmq/types.js";
+import type { BrokerHealthResult } from "./broker/types.js";
 
 describe("checkNodeVersion", () => {
   it("returns ok for v22", () => {
@@ -51,42 +51,42 @@ describe("checkSchemaCount", () => {
   });
 });
 
-describe("checkRabbitMQConnectivity", () => {
+describe("checkBrokerConnectivity", () => {
   it("returns reachable when health check succeeds", async () => {
-    const healthFn = async (): Promise<HealthCheckResponse> => ({
+    const healthFn = async (): Promise<BrokerHealthResult> => ({
       status: "ok",
     });
-    const result = await checkRabbitMQConnectivity(healthFn);
+    const result = await checkBrokerConnectivity(healthFn);
     expect(result.reachable).toBe(true);
     expect(result.status).toBe("ok");
     expect(result.message).toEqual(expect.any(String));
   });
 
   it("returns unhealthy when status is not ok", async () => {
-    const healthFn = async (): Promise<HealthCheckResponse> => ({
+    const healthFn = async (): Promise<BrokerHealthResult> => ({
       status: "failed",
       reason: "disk alarm",
     });
-    const result = await checkRabbitMQConnectivity(healthFn);
+    const result = await checkBrokerConnectivity(healthFn);
     expect(result.reachable).toBe(true);
     expect(result.status).toBe("failed");
     expect(result.message).toContain("disk alarm");
   });
 
   it("returns unreachable on network error", async () => {
-    const healthFn = async (): Promise<HealthCheckResponse> => {
+    const healthFn = async (): Promise<BrokerHealthResult> => {
       throw new Error("ECONNREFUSED");
     };
-    const result = await checkRabbitMQConnectivity(healthFn);
+    const result = await checkBrokerConnectivity(healthFn);
     expect(result.reachable).toBe(false);
     expect(result.status).toBeNull();
     expect(result.message).toContain("ECONNREFUSED");
   });
 
   it("returns unreachable on timeout", async () => {
-    const neverResolve = (): Promise<HealthCheckResponse> =>
+    const neverResolve = (): Promise<BrokerHealthResult> =>
       new Promise<never>(() => {});
-    const result = await checkRabbitMQConnectivity(neverResolve, 50);
+    const result = await checkBrokerConnectivity(neverResolve, 50);
     expect(result.reachable).toBe(false);
     expect(result.status).toBeNull();
     expect(result.message).toContain("timed out");

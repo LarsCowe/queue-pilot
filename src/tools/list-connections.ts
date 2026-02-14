@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { ConnectionCapability } from "../broker/types.js";
 
 export interface ListConnectionsResult {
   connections: Array<{
@@ -14,20 +14,20 @@ export interface ListConnectionsResult {
 }
 
 export async function listConnections(
-  client: RabbitMQClient,
+  adapter: ConnectionCapability,
 ): Promise<ListConnectionsResult> {
-  const connections = await client.listConnections();
+  const connections = await adapter.listConnections();
 
   return {
     connections: connections.map((c) => ({
-      name: c.name,
-      user: c.user,
-      state: c.state,
-      channels: c.channels,
-      connected_at: c.connected_at,
-      connection_name: c.client_properties.connection_name,
-      peer_host: c.peer_host,
-      peer_port: c.peer_port,
+      name: c.name as string,
+      user: c.user as string,
+      state: c.state as string,
+      channels: c.channels as number,
+      connected_at: c.connected_at as number,
+      connection_name: (c.client_properties as { connection_name?: string })?.connection_name,
+      peer_host: c.peer_host as string,
+      peer_port: c.peer_port as number,
     })),
   };
 }

@@ -4,16 +4,30 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
 import { orderSchema } from "./test-fixtures.js";
+import { RabbitMQClient } from "./rabbitmq/client.js";
+import { RabbitMQAdapter } from "./brokers/rabbitmq/adapter.js";
+import { createRabbitMQTools } from "./brokers/rabbitmq/tools.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
 
+function createTestAdapter() {
+  const client = new RabbitMQClient({
+    url: "http://localhost:15672",
+    username: "guest",
+    password: "guest",
+  });
+  const adapter = new RabbitMQAdapter(client);
+  const brokerTools = createRabbitMQTools(adapter);
+  return { adapter, brokerTools };
+}
+
 async function createTestClient(): Promise<Client> {
+  const { adapter, brokerTools } = createTestAdapter();
   const server = createServer({
     schemas: [orderSchema],
-    rabbitmqUrl: "http://localhost:15672",
-    rabbitmqUser: "guest",
-    rabbitmqPass: "guest",
+    adapter,
+    brokerTools,
   });
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

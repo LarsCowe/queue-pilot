@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface CreateQueueParams {
   queue: string;
@@ -15,12 +15,14 @@ export interface CreateQueueResult {
 }
 
 export async function createQueue(
-  client: RabbitMQClient,
+  adapter: BrokerAdapter,
   params: CreateQueueParams,
 ): Promise<CreateQueueResult> {
-  await client.createQueue(params.vhost, params.queue, {
+  await adapter.createQueue({
+    name: params.queue,
     durable: params.durable,
     auto_delete: params.auto_delete,
+    scope: params.vhost,
   });
 
   return {

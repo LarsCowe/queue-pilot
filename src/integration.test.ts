@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
+import { createAdapter } from "./broker/factory.js";
 import { orderSchema } from "./test-fixtures.js";
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL ?? "http://localhost:15672";
@@ -9,11 +10,16 @@ const RABBITMQ_USER = process.env.RABBITMQ_USER ?? "guest";
 const RABBITMQ_PASS = process.env.RABBITMQ_PASS ?? "guest";
 
 async function createTestClient(): Promise<Client> {
+  const { adapter, tools } = createAdapter({
+    broker: "rabbitmq",
+    url: RABBITMQ_URL,
+    username: RABBITMQ_USER,
+    password: RABBITMQ_PASS,
+  });
   const server = createServer({
     schemas: [orderSchema],
-    rabbitmqUrl: RABBITMQ_URL,
-    rabbitmqUser: RABBITMQ_USER,
-    rabbitmqPass: RABBITMQ_PASS,
+    adapter,
+    brokerTools: tools,
   });
 
   const [clientTransport, serverTransport] =

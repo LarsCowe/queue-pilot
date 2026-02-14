@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import { deleteQueue } from "./delete-queue.js";
 
 describe("deleteQueue", () => {
   it("deletes a queue and confirms deletion", async () => {
-    const client = {
+    const adapter = {
       deleteQueue: vi.fn().mockResolvedValue(undefined),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    const result = await deleteQueue(client, {
+    const result = await deleteQueue(adapter, {
       queue: "order-events",
       vhost: "/",
     });
@@ -18,15 +18,15 @@ describe("deleteQueue", () => {
       vhost: "/",
       deleted: true,
     });
-    expect(client.deleteQueue).toHaveBeenCalledWith("/", "order-events");
+    expect(adapter.deleteQueue).toHaveBeenCalledWith("order-events", "/");
   });
 
   it("deletes a queue in a custom vhost", async () => {
-    const client = {
+    const adapter = {
       deleteQueue: vi.fn().mockResolvedValue(undefined),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    const result = await deleteQueue(client, {
+    const result = await deleteQueue(adapter, {
       queue: "payment-notifications",
       vhost: "production",
     });
@@ -36,21 +36,21 @@ describe("deleteQueue", () => {
       vhost: "production",
       deleted: true,
     });
-    expect(client.deleteQueue).toHaveBeenCalledWith(
-      "production",
+    expect(adapter.deleteQueue).toHaveBeenCalledWith(
       "payment-notifications",
+      "production",
     );
   });
 
-  it("propagates errors from the RabbitMQ client", async () => {
-    const client = {
+  it("propagates errors from the broker adapter", async () => {
+    const adapter = {
       deleteQueue: vi
         .fn()
         .mockRejectedValue(new Error("RabbitMQ API error: 404 Not Found")),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
     await expect(
-      deleteQueue(client, { queue: "nonexistent", vhost: "/" }),
+      deleteQueue(adapter, { queue: "nonexistent", vhost: "/" }),
     ).rejects.toThrow("RabbitMQ API error: 404 Not Found");
   });
 });

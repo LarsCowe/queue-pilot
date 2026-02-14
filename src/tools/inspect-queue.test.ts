@@ -1,31 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import { SchemaValidator } from "../schemas/validator.js";
 import { inspectQueue } from "./inspect-queue.js";
 import { orderSchema, paymentSchema } from "../test-fixtures.js";
 
-function mockClient(messages: unknown[]): RabbitMQClient {
+function mockAdapter(messages: unknown[]): BrokerAdapter {
   return {
     peekMessages: vi.fn().mockResolvedValue(messages),
-  } as unknown as RabbitMQClient;
+  } as unknown as BrokerAdapter;
 }
 
 describe("inspectQueue", () => {
   it("validates messages against their schema type", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.count).toBe(1);
     expect(result.messages[0].validation.valid).toBe(true);
@@ -36,20 +33,17 @@ describe("inspectQueue", () => {
   });
 
   it("reports invalid messages with validation errors", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001"}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].validation.valid).toBe(false);
     expect(result.messages[0].validation.errors.length).toBeGreaterThan(0);
@@ -57,20 +51,17 @@ describe("inspectQueue", () => {
   });
 
   it("handles messages without a type property", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"data":"test"}',
         payload_encoding: "string",
         properties: {},
-        exchange: "",
-        routing_key: "",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "", routing_key: "" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].validation.schemaName).toBeNull();
     expect(result.messages[0].validation.valid).toBeNull();
@@ -78,20 +69,17 @@ describe("inspectQueue", () => {
   });
 
   it("handles messages with unknown schema type", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"data":"test"}',
         payload_encoding: "string",
         properties: { type: "unknown.event" },
-        exchange: "",
-        routing_key: "",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "", routing_key: "" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].validation.schemaName).toBe("unknown.event");
     expect(result.messages[0].validation.valid).toBeNull();
@@ -102,38 +90,29 @@ describe("inspectQueue", () => {
   });
 
   it("provides a correct summary for mixed results", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
       {
         payload: '{"orderId":"ORD-002"}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
       {
         payload: '{"other":"data"}',
         payload_encoding: "string",
         properties: {},
-        exchange: "",
-        routing_key: "",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "", routing_key: "" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.summary).toEqual({
       total: 3,
@@ -145,20 +124,17 @@ describe("inspectQueue", () => {
   });
 
   it("parses JSON payloads for inspection", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].parsedPayload).toEqual({
       orderId: "ORD-001",
@@ -167,29 +143,23 @@ describe("inspectQueue", () => {
   });
 
   it("validates mixed message types against their respective schemas", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
       {
         payload: '{"invoiceId":"INV-001","amount":99.50,"currency":"EUR"}',
         payload_encoding: "string",
         properties: { type: "payment.processed" },
-        exchange: "events",
-        routing_key: "payment.processed",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "payment.processed" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema, paymentSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "mixed-events", 5);
+    const result = await inspectQueue(adapter, validator, "/", "mixed-events", 5);
 
     expect(result.messages[0].validation.schemaName).toBe("order.created");
     expect(result.messages[0].validation.valid).toBe(true);
@@ -205,20 +175,17 @@ describe("inspectQueue", () => {
   });
 
   it("handles malformed non-JSON payloads gracefully", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: "this is not valid JSON",
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].parsedPayload).toBe("this is not valid JSON");
     expect(result.messages[0].validation.valid).toBe(false);
@@ -229,20 +196,17 @@ describe("inspectQueue", () => {
   });
 
   it("reports noSchema for malformed JSON without a schema type", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: "not JSON at all",
         payload_encoding: "string",
         properties: {},
-        exchange: "",
-        routing_key: "",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "", routing_key: "" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].parsedPayload).toBe("not JSON at all");
     expect(result.messages[0].validation.valid).toBeNull();
@@ -250,10 +214,10 @@ describe("inspectQueue", () => {
   });
 
   it("returns correct summary for an empty queue", async () => {
-    const client = mockClient([]);
+    const adapter = mockAdapter([]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "empty-queue", 5);
+    const result = await inspectQueue(adapter, validator, "/", "empty-queue", 5);
 
     expect(result.messages).toEqual([]);
     expect(result.count).toBe(0);
@@ -267,40 +231,34 @@ describe("inspectQueue", () => {
   });
 
   it("counts base64 message with known schema type as skipped", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: "SGVsbG8gV29ybGQ=",
         payload_encoding: "base64",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.summary.skipped).toBe(1);
     expect(result.summary.noSchema).toBe(0);
   });
 
   it("skips JSON.parse and validation for base64-encoded payloads", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: "SGVsbG8gV29ybGQ=",
         payload_encoding: "base64",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].payload).toBe("SGVsbG8gV29ybGQ=");
     expect(result.messages[0].payload_encoding).toBe("base64");
@@ -310,26 +268,23 @@ describe("inspectQueue", () => {
   });
 
   it("includes payload_encoding in message output", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
         properties: { type: "order.created" },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].payload_encoding).toBe("string");
   });
 
   it("passes through all message properties including content_type", async () => {
-    const client = mockClient([
+    const adapter = mockAdapter([
       {
         payload: '{"orderId":"ORD-001","amount":49.99}',
         payload_encoding: "string",
@@ -341,15 +296,12 @@ describe("inspectQueue", () => {
           headers: { "x-retry-count": 2, source: "billing-service" },
           content_type: "application/json",
         },
-        exchange: "events",
-        routing_key: "order.created",
-        message_count: 0,
-        redelivered: false,
+        metadata: { exchange: "events", routing_key: "order.created" },
       },
     ]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "orders", 5);
+    const result = await inspectQueue(adapter, validator, "/", "orders", 5);
 
     expect(result.messages[0].properties).toEqual({
       type: "order.created",
@@ -362,22 +314,22 @@ describe("inspectQueue", () => {
   });
 
   it("includes the queue name in the result", async () => {
-    const client = mockClient([]);
+    const adapter = mockAdapter([]);
     const validator = new SchemaValidator([orderSchema]);
 
-    const result = await inspectQueue(client, validator, "/", "payments-dlq", 5);
+    const result = await inspectQueue(adapter, validator, "/", "payments-dlq", 5);
 
     expect(result.queue).toBe("payments-dlq");
   });
 
-  it("propagates errors from the RabbitMQ client", async () => {
-    const client = {
+  it("propagates errors from the broker adapter", async () => {
+    const adapter = {
       peekMessages: vi.fn().mockRejectedValue(new Error("Connection refused")),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
     const validator = new SchemaValidator([orderSchema]);
 
     await expect(
-      inspectQueue(client, validator, "/", "orders", 5),
+      inspectQueue(adapter, validator, "/", "orders", 5),
     ).rejects.toThrow("Connection refused");
   });
 });

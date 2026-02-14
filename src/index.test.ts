@@ -74,6 +74,13 @@ describe("parseArgs", () => {
     expect(output).toContain("RABBITMQ_PASS");
   });
 
+  it("mentions --broker flag in help text", () => {
+    expect(() => parseArgs(["--help"])).toThrow("process.exit");
+
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
+    expect(output).toContain("--broker");
+  });
+
   it("prints version and exits 0 for --version", () => {
     expect(() => parseArgs(["--version"])).toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(0);
@@ -88,10 +95,23 @@ describe("parseArgs", () => {
 
     expect(result).toEqual({
       schemas: "/tmp/schemas",
+      broker: "rabbitmq",
       rabbitmqUrl: "http://localhost:15672",
       rabbitmqUser: "guest",
       rabbitmqPass: "guest",
     });
+  });
+
+  it("defaults broker to rabbitmq", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas"]);
+    expect(result.broker).toBe("rabbitmq");
+  });
+
+  it("parses --broker flag", () => {
+    vi.restoreAllMocks();
+    const result = parseArgs(["--schemas", "/tmp/schemas", "--broker", "rabbitmq"]);
+    expect(result.broker).toBe("rabbitmq");
   });
 
   it("exits 1 when --schemas is missing", () => {
@@ -205,5 +225,15 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--rabbitmq-url", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
     const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
     expect(output).toContain("--rabbitmq-url requires a value");
+  });
+
+  it("exits 1 when --broker value is another flag", () => {
+    expect(() => parseArgs(["--broker", "--schemas", "/tmp/schemas"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when --broker is last argument with no value", () => {
+    expect(() => parseArgs(["--schemas", "/tmp/schemas", "--broker"])).toThrow("process.exit");
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });

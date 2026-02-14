@@ -1,28 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import { checkHealth } from "./check-health.js";
 
 describe("checkHealth", () => {
   it("returns ok status when broker is healthy", async () => {
-    const client = {
+    const adapter = {
       checkHealth: vi.fn().mockResolvedValue({ status: "ok" }),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    const result = await checkHealth(client);
+    const result = await checkHealth(adapter);
 
     expect(result).toEqual({ status: "ok" });
-    expect(client.checkHealth).toHaveBeenCalledOnce();
+    expect(adapter.checkHealth).toHaveBeenCalledOnce();
   });
 
   it("returns failed status with reason when broker is unhealthy", async () => {
-    const client = {
+    const adapter = {
       checkHealth: vi.fn().mockResolvedValue({
         status: "failed",
         reason: "There are alarms in effect in the cluster",
       }),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    const result = await checkHealth(client);
+    const result = await checkHealth(adapter);
 
     expect(result).toEqual({
       status: "failed",
@@ -31,22 +31,22 @@ describe("checkHealth", () => {
   });
 
   it("omits reason field when not present", async () => {
-    const client = {
+    const adapter = {
       checkHealth: vi.fn().mockResolvedValue({ status: "ok" }),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    const result = await checkHealth(client);
+    const result = await checkHealth(adapter);
 
     expect(result).not.toHaveProperty("reason");
   });
 
   it("propagates network errors", async () => {
-    const client = {
+    const adapter = {
       checkHealth: vi
         .fn()
         .mockRejectedValue(new Error("ECONNREFUSED")),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
-    await expect(checkHealth(client)).rejects.toThrow("ECONNREFUSED");
+    await expect(checkHealth(adapter)).rejects.toThrow("ECONNREFUSED");
   });
 });

@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import type { SchemaValidator } from "../schemas/validator.js";
 
 export interface InspectedMessage {
@@ -36,13 +36,13 @@ export interface InspectQueueResult {
 }
 
 export async function inspectQueue(
-  client: RabbitMQClient,
+  adapter: BrokerAdapter,
   validator: SchemaValidator,
-  vhost: string,
+  scope: string,
   queue: string,
   count: number,
 ): Promise<InspectQueueResult> {
-  const messages = await client.peekMessages(vhost, queue, count);
+  const messages = await adapter.peekMessages(queue, count, scope);
 
   let validCount = 0;
   let invalidCount = 0;
@@ -110,8 +110,8 @@ export async function inspectQueue(
         headers: m.properties.headers,
         content_type: m.properties.content_type,
       },
-      exchange: m.exchange,
-      routing_key: m.routing_key,
+      exchange: m.metadata.exchange as string,
+      routing_key: m.metadata.routing_key as string,
       validation: {
         schemaName,
         valid,

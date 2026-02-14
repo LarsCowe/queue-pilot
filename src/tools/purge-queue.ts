@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface PurgeQueueResult {
   queue: string;
@@ -6,14 +6,14 @@ export interface PurgeQueueResult {
 }
 
 export async function purgeQueue(
-  client: RabbitMQClient,
-  vhost: string,
+  adapter: BrokerAdapter,
+  scope: string,
   queue: string,
 ): Promise<PurgeQueueResult> {
-  const response = await client.purgeQueue(vhost, queue);
+  const result = await adapter.purgeQueue(queue, scope);
 
   return {
     queue,
-    messages_purged: response.message_count,
+    messages_purged: result.messagesRemoved,
   };
 }

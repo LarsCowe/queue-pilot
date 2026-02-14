@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface CheckHealthResult {
   status: string;
@@ -6,9 +6,9 @@ export interface CheckHealthResult {
 }
 
 export async function checkHealth(
-  client: RabbitMQClient,
+  adapter: BrokerAdapter,
 ): Promise<CheckHealthResult> {
-  const health = await client.checkHealth();
+  const health = await adapter.checkHealth();
 
   const result: CheckHealthResult = { status: health.status };
   if (health.reason) {

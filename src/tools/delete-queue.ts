@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface DeleteQueueParams {
   queue: string;
@@ -12,10 +12,10 @@ export interface DeleteQueueResult {
 }
 
 export async function deleteQueue(
-  client: RabbitMQClient,
+  adapter: BrokerAdapter,
   params: DeleteQueueParams,
 ): Promise<DeleteQueueResult> {
-  await client.deleteQueue(params.vhost, params.queue);
+  await adapter.deleteQueue(params.queue, params.vhost);
 
   return {
     queue: params.queue,

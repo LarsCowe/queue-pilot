@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface ListQueuesResult {
   queues: Array<{
@@ -10,10 +10,10 @@ export interface ListQueuesResult {
 }
 
 export async function listQueues(
-  client: RabbitMQClient,
-  vhost: string,
+  adapter: BrokerAdapter,
+  scope: string,
 ): Promise<ListQueuesResult> {
-  const queues = await client.listQueues(vhost);
+  const queues = await adapter.listQueues(scope);
 
   return {
     queues: queues.map((q) => ({

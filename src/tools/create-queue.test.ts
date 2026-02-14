@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 import { createQueue } from "./create-queue.js";
 
 describe("createQueue", () => {
   it("creates a new queue and returns its settings", async () => {
-    const client = {
-      createQueue: vi.fn().mockResolvedValue(undefined),
-    } as unknown as RabbitMQClient;
+    const adapter = {
+      createQueue: vi.fn().mockResolvedValue({ name: "order-events", created: true }),
+    } as unknown as BrokerAdapter;
 
-    const result = await createQueue(client, {
+    const result = await createQueue(adapter, {
       queue: "order-events",
       durable: false,
       auto_delete: false,
@@ -21,18 +21,20 @@ describe("createQueue", () => {
       auto_delete: false,
       vhost: "/",
     });
-    expect(client.createQueue).toHaveBeenCalledWith("/", "order-events", {
+    expect(adapter.createQueue).toHaveBeenCalledWith({
+      name: "order-events",
       durable: false,
       auto_delete: false,
+      scope: "/",
     });
   });
 
   it("reflects durable setting when creating a persistent queue", async () => {
-    const client = {
-      createQueue: vi.fn().mockResolvedValue(undefined),
-    } as unknown as RabbitMQClient;
+    const adapter = {
+      createQueue: vi.fn().mockResolvedValue({ name: "payment-notifications", created: true }),
+    } as unknown as BrokerAdapter;
 
-    const result = await createQueue(client, {
+    const result = await createQueue(adapter, {
       queue: "payment-notifications",
       durable: true,
       auto_delete: false,
@@ -45,24 +47,25 @@ describe("createQueue", () => {
       auto_delete: false,
       vhost: "/",
     });
-    expect(client.createQueue).toHaveBeenCalledWith(
-      "/",
-      "payment-notifications",
-      { durable: true, auto_delete: false },
-    );
+    expect(adapter.createQueue).toHaveBeenCalledWith({
+      name: "payment-notifications",
+      durable: true,
+      auto_delete: false,
+      scope: "/",
+    });
   });
 
-  it("throws when RabbitMQ returns a 409 conflict", async () => {
-    const client = {
+  it("throws when broker returns a 409 conflict", async () => {
+    const adapter = {
       createQueue: vi
         .fn()
         .mockRejectedValue(
           new Error("RabbitMQ API error: 409 Conflict"),
         ),
-    } as unknown as RabbitMQClient;
+    } as unknown as BrokerAdapter;
 
     await expect(
-      createQueue(client, {
+      createQueue(adapter, {
         queue: "order-events",
         durable: true,
         auto_delete: false,

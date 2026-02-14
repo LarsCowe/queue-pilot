@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { ConnectionCapability } from "../broker/types.js";
 import { listConnections } from "./list-connections.js";
 
 describe("listConnections", () => {
   it("returns connections with flattened details", async () => {
-    const client = {
+    const adapter: ConnectionCapability = {
       listConnections: vi.fn().mockResolvedValue([
         {
           name: "172.17.0.3:43210 -> 172.17.0.2:5672",
@@ -17,9 +17,9 @@ describe("listConnections", () => {
           peer_port: 43210,
         },
       ]),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await listConnections(client);
+    const result = await listConnections(adapter);
 
     expect(result.connections).toHaveLength(1);
     expect(result.connections[0]).toEqual({
@@ -32,11 +32,11 @@ describe("listConnections", () => {
       peer_host: "172.17.0.3",
       peer_port: 43210,
     });
-    expect(client.listConnections).toHaveBeenCalledOnce();
+    expect(adapter.listConnections).toHaveBeenCalledOnce();
   });
 
   it("handles missing connection_name in client properties", async () => {
-    const client = {
+    const adapter: ConnectionCapability = {
       listConnections: vi.fn().mockResolvedValue([
         {
           name: "172.17.0.5:50000 -> 172.17.0.2:5672",
@@ -49,31 +49,31 @@ describe("listConnections", () => {
           peer_port: 50000,
         },
       ]),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await listConnections(client);
+    const result = await listConnections(adapter);
 
     expect(result.connections[0].connection_name).toBeUndefined();
   });
 
   it("returns empty list when no connections exist", async () => {
-    const client = {
+    const adapter: ConnectionCapability = {
       listConnections: vi.fn().mockResolvedValue([]),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await listConnections(client);
+    const result = await listConnections(adapter);
 
     expect(result.connections).toEqual([]);
   });
 
-  it("propagates errors from the RabbitMQ client", async () => {
-    const client = {
+  it("propagates errors from the adapter", async () => {
+    const adapter: ConnectionCapability = {
       listConnections: vi
         .fn()
         .mockRejectedValue(new Error("RabbitMQ API error: 401 Unauthorized")),
-    } as unknown as RabbitMQClient;
+    };
 
-    await expect(listConnections(client)).rejects.toThrow(
+    await expect(listConnections(adapter)).rejects.toThrow(
       "RabbitMQ API error: 401 Unauthorized",
     );
   });

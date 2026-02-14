@@ -1,4 +1,4 @@
-import type { HealthCheckResponse } from "./rabbitmq/types.js";
+import type { BrokerHealthResult } from "./broker/types.js";
 
 export interface NodeVersionCheck {
   ok: boolean;
@@ -11,7 +11,7 @@ export interface SchemaLoadResult {
   warning: string | null;
 }
 
-export interface RabbitMQConnectivityResult {
+export interface BrokerConnectivityResult {
   reachable: boolean;
   status: string | null;
   message: string;
@@ -38,10 +38,10 @@ export function checkSchemaCount(count: number): SchemaLoadResult {
   };
 }
 
-export async function checkRabbitMQConnectivity(
-  healthCheckFn: () => Promise<HealthCheckResponse>,
+export async function checkBrokerConnectivity(
+  healthCheckFn: () => Promise<BrokerHealthResult>,
   timeoutMs: number = 3000,
-): Promise<RabbitMQConnectivityResult> {
+): Promise<BrokerConnectivityResult> {
   try {
     const timeout = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error("Health check timed out")), timeoutMs);
@@ -49,12 +49,12 @@ export async function checkRabbitMQConnectivity(
     const result = await Promise.race([healthCheckFn(), timeout]);
 
     if (result.status === "ok") {
-      return { reachable: true, status: "ok", message: "RabbitMQ is healthy" };
+      return { reachable: true, status: "ok", message: "Broker is healthy" };
     }
     return {
       reachable: true,
       status: result.status,
-      message: `RabbitMQ is unhealthy: ${result.reason ?? result.status}`,
+      message: `Broker is unhealthy: ${result.reason ?? result.status}`,
     };
   } catch (error: unknown) {
     const message =

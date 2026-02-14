@@ -1,4 +1,4 @@
-import type { RabbitMQClient } from "../rabbitmq/client.js";
+import type { BrokerAdapter } from "../broker/types.js";
 
 export interface PeekMessagesResult {
   messages: Array<{
@@ -19,12 +19,12 @@ export interface PeekMessagesResult {
 }
 
 export async function peekMessages(
-  client: RabbitMQClient,
-  vhost: string,
+  adapter: BrokerAdapter,
+  scope: string,
   queue: string,
   count: number,
 ): Promise<PeekMessagesResult> {
-  const messages = await client.peekMessages(vhost, queue, count);
+  const messages = await adapter.peekMessages(queue, count, scope);
 
   return {
     messages: messages.map((m) => ({
@@ -38,8 +38,8 @@ export async function peekMessages(
         headers: m.properties.headers,
         content_type: m.properties.content_type,
       },
-      exchange: m.exchange,
-      routing_key: m.routing_key,
+      exchange: m.metadata.exchange as string,
+      routing_key: m.metadata.routing_key as string,
     })),
     count: messages.length,
   };

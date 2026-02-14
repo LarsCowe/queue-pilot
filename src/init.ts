@@ -20,6 +20,7 @@ const SUPPORTED_CLIENTS: ClientFormat[] = [
 export interface InitArgs {
   schemas: string;
   client: ClientFormat;
+  broker: string;
   rabbitmqUrl: string;
   rabbitmqUser: string;
   rabbitmqPass: string;
@@ -39,6 +40,7 @@ Options:
   --schemas <dir>        Directory containing JSON Schema files (required)
   --client <name>        MCP client format (default: generic)
                          Supported: ${SUPPORTED_CLIENTS.join(", ")}
+  --broker <type>        Broker type (default: rabbitmq)
   --rabbitmq-url <url>   RabbitMQ Management API URL (default: http://localhost:15672)
   --rabbitmq-user <user> RabbitMQ username (default: guest)
   --rabbitmq-pass <pass> RabbitMQ password (default: guest)
@@ -86,6 +88,15 @@ export function parseInitArgs(argv: string[]): InitArgs {
         args.client = value as ClientFormat;
         break;
       }
+      case "--broker": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --broker requires a value\n");
+          process.exit(1);
+        }
+        args.broker = value;
+        break;
+      }
       case "--rabbitmq-url": {
         const value = argv[++i];
         if (!value || value.startsWith("--")) {
@@ -126,6 +137,7 @@ export function parseInitArgs(argv: string[]): InitArgs {
   return {
     schemas: args.schemas,
     client: args.client ?? "generic",
+    broker: args.broker ?? "rabbitmq",
     rabbitmqUrl:
       args.rabbitmqUrl ??
       process.env.RABBITMQ_URL ??

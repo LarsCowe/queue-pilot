@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { RabbitMQClient } from "../rabbitmq/client.js";
+import type { OverviewCapability } from "../broker/types.js";
 import { getOverview } from "./get-overview.js";
 
 const sampleOverview = {
@@ -14,24 +14,24 @@ const sampleOverview = {
 
 describe("getOverview", () => {
   it("returns cluster overview information", async () => {
-    const client = {
+    const adapter: OverviewCapability = {
       getOverview: vi.fn().mockResolvedValue(sampleOverview),
-    } as unknown as RabbitMQClient;
+    };
 
-    const result = await getOverview(client);
+    const result = await getOverview(adapter);
 
     expect(result).toEqual(sampleOverview);
-    expect(client.getOverview).toHaveBeenCalledOnce();
+    expect(adapter.getOverview).toHaveBeenCalledOnce();
   });
 
-  it("propagates errors from the RabbitMQ client", async () => {
-    const client = {
+  it("propagates errors from the adapter", async () => {
+    const adapter: OverviewCapability = {
       getOverview: vi
         .fn()
         .mockRejectedValue(new Error("RabbitMQ API error: 401 Unauthorized")),
-    } as unknown as RabbitMQClient;
+    };
 
-    await expect(getOverview(client)).rejects.toThrow(
+    await expect(getOverview(adapter)).rejects.toThrow(
       "RabbitMQ API error: 401 Unauthorized",
     );
   });

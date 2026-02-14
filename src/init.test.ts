@@ -49,6 +49,7 @@ describe("parseInitArgs", () => {
     const result = parseInitArgs(["--schemas", absPath]);
     expect(result.schemas).toBe(absPath);
     expect(result.client).toBe("generic");
+    expect(result.broker).toBe("rabbitmq");
     expect(result.rabbitmqUrl).toBe("http://localhost:15672");
     expect(result.rabbitmqUser).toBe("guest");
     expect(result.rabbitmqPass).toBe("guest");
@@ -114,12 +115,20 @@ describe("parseInitArgs", () => {
     expect(result.rabbitmqUrl).toBe("http://cli-rabbit:15672");
   });
 
+  it("parses --broker flag", () => {
+    vi.restoreAllMocks();
+    const absPath = path.resolve("/tmp/schemas");
+    const result = parseInitArgs(["--schemas", absPath, "--broker", "rabbitmq"]);
+    expect(result.broker).toBe("rabbitmq");
+  });
+
   it("prints help and exits 0 for --help", () => {
     expect(() => parseInitArgs(["--help"])).toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(0);
     const output = stderrSpy.mock.calls.map((c) => c[0]).join("");
     expect(output).toContain("--schemas");
     expect(output).toContain("--client");
+    expect(output).toContain("--broker");
   });
 });
 
@@ -128,6 +137,7 @@ describe("buildConfig", () => {
     const config = buildConfig({
       schemas: "/home/user/schemas",
       client: "generic",
+      broker: "rabbitmq",
       rabbitmqUrl: "http://localhost:15672",
       rabbitmqUser: "guest",
       rabbitmqPass: "guest",
@@ -143,6 +153,7 @@ describe("buildConfig", () => {
     const config = buildConfig({
       schemas: "/schemas",
       client: "generic",
+      broker: "rabbitmq",
       rabbitmqUrl: "http://localhost:15672",
       rabbitmqUser: "guest",
       rabbitmqPass: "guest",
@@ -154,6 +165,7 @@ describe("buildConfig", () => {
     const config = buildConfig({
       schemas: "/schemas",
       client: "generic",
+      broker: "rabbitmq",
       rabbitmqUrl: "http://production:15672",
       rabbitmqUser: "admin",
       rabbitmqPass: "secret",
@@ -168,6 +180,7 @@ describe("buildConfig", () => {
     const config = buildConfig({
       schemas: "/schemas",
       client: "generic",
+      broker: "rabbitmq",
       rabbitmqUrl: "http://localhost:15672",
       rabbitmqUser: "admin",
       rabbitmqPass: "guest",
