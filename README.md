@@ -30,7 +30,7 @@ Designed for integration projects where multiple teams communicate via message b
 - **Node.js >= 22** — Required runtime ([check with `node --version`](https://nodejs.org/))
 - **A message broker:**
   - **RabbitMQ** with the [management plugin](https://www.rabbitmq.com/docs/management) enabled (HTTP API on port 15672), or
-  - **Apache Kafka** (requires `@confluentinc/kafka-javascript` — see [Kafka setup](#kafka-with-npx) below)
+  - **Apache Kafka** (requires `@confluentinc/kafka-javascript` as peer dependency)
 - **An MCP-compatible client** — Claude Code, Claude Desktop, Cursor, VS Code (Copilot), Windsurf, etc.
 
 ## Quick Start
@@ -62,55 +62,20 @@ Create JSON Schema files in a directory:
 Generate the config for your client with `queue-pilot init`:
 
 ```bash
-# RabbitMQ (default)
-npx queue-pilot init --schemas /absolute/path/to/your/schemas
-
-# Kafka
-npx queue-pilot init --schemas /absolute/path/to/your/schemas --broker kafka
+npx queue-pilot init --schemas /absolute/path/to/your/schemas --client <name>
 ```
 
-> [!IMPORTANT]
-> **Kafka with npx** <a id="kafka-with-npx"></a>
->
-> `@confluentinc/kafka-javascript` is an optional peer dependency. Plain `npx queue-pilot` won't install it, so Kafka mode will fail at runtime. Use one of these approaches:
->
-> ```bash
-> # Option 1: npx with explicit packages
-> npx -y --package=@confluentinc/kafka-javascript --package=queue-pilot queue-pilot --schemas ./schemas --broker kafka
->
-> # Option 2: global install
-> npm install -g queue-pilot @confluentinc/kafka-javascript
-> queue-pilot --schemas ./schemas --broker kafka
-> ```
+Supported clients: `claude-code`, `claude-desktop`, `vscode`, `cursor`, `windsurf`. Omit `--client` for generic JSON.
 
-For a specific client, use `--client`:
+For Kafka, add `--broker kafka`. The generated config automatically includes the required `@confluentinc/kafka-javascript` peer dependency.
+
+Non-default credentials are included as environment variables to avoid exposing secrets in `ps` output:
 
 ```bash
-# Claude Code — outputs a ready-to-run `claude mcp add` command
-npx queue-pilot init --schemas ./schemas --client claude-code
-
-# VS Code (Copilot)
-npx queue-pilot init --schemas ./schemas --client vscode
-
-# Cursor
-npx queue-pilot init --schemas ./schemas --client cursor
-
-# Claude Desktop
-npx queue-pilot init --schemas ./schemas --client claude-desktop
-
-# Windsurf
-npx queue-pilot init --schemas ./schemas --client windsurf
-```
-
-Non-default settings are included as environment variables (not CLI args) to avoid exposing credentials in `ps` output:
-
-```bash
-# RabbitMQ with custom credentials
 npx queue-pilot init --schemas ./schemas --rabbitmq-user admin --rabbitmq-pass secret
-
-# Kafka with SASL authentication
-npx queue-pilot init --schemas ./schemas --broker kafka --kafka-brokers kafka:9092 --kafka-sasl-mechanism plain --kafka-sasl-username admin --kafka-sasl-password secret
 ```
+
+Run `npx queue-pilot init --help` for all options including Kafka SASL authentication.
 
 > **Windows note:** If `npx` fails to resolve the package, try `cmd /c npx queue-pilot init ...`.
 
@@ -207,7 +172,8 @@ Ask your assistant things like:
 - "List all consumer groups" (Kafka)
 - "Show me the partition details for the orders topic" (Kafka)
 
-## MCP Tools
+<details>
+<summary>MCP Tools</summary>
 
 ### Universal tools (all brokers)
 
@@ -249,7 +215,12 @@ Ask your assistant things like:
 | `list_partitions` | Show partition details for a topic (leader, replicas, ISR) |
 | `get_offsets` | Show earliest/latest offsets per partition |
 
-## MCP Prompts
+</details>
+
+<details>
+<summary>MCP Prompts & Resources</summary>
+
+### Prompts
 
 Pre-built workflow templates that guide your AI assistant through multi-step operations.
 
@@ -263,11 +234,13 @@ Usage example (in any MCP-compatible client):
 
 > "Use the debug-flow prompt for exchange 'events' and queue 'orders'"
 
-## MCP Resources
+### Resources
 
 Each loaded schema is exposed as a readable MCP resource at `schema:///<schema-name>`.
 
 Clients that support MCP resources can read schema definitions directly without calling tools. For example, a schema loaded from `order.created.json` is available at `schema:///order.created`.
+
+</details>
 
 ## Schema Format
 
@@ -279,72 +252,24 @@ Schemas follow JSON Schema draft-07 with a few conventions:
 
 Schema matching: when inspecting a queue, the message's `type` property is used to find the corresponding schema by `$id`.
 
-## CLI Arguments
+## Configuration
 
-### General
+CLI arguments take priority over environment variables, which take priority over defaults.
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--schemas` | (required) | Path to directory containing JSON Schema files |
-| `--broker` | `rabbitmq` | Broker type: `rabbitmq` or `kafka` |
+| Setting | CLI flag | Env var | Default |
+|---------|----------|---------|---------|
+| Schema directory | `--schemas` | — | _(required)_ |
+| Broker type | `--broker` | — | `rabbitmq` |
+| RabbitMQ URL | `--rabbitmq-url` | `RABBITMQ_URL` | `http://localhost:15672` |
+| RabbitMQ user | `--rabbitmq-user` | `RABBITMQ_USER` | `guest` |
+| RabbitMQ password | `--rabbitmq-pass` | `RABBITMQ_PASS` | `guest` |
+| Kafka brokers | `--kafka-brokers` | `KAFKA_BROKERS` | `localhost:9092` |
+| Kafka client ID | `--kafka-client-id` | `KAFKA_CLIENT_ID` | `queue-pilot` |
+| SASL mechanism | `--kafka-sasl-mechanism` | `KAFKA_SASL_MECHANISM` | _(none)_ |
+| SASL username | `--kafka-sasl-username` | `KAFKA_SASL_USERNAME` | _(none)_ |
+| SASL password | `--kafka-sasl-password` | `KAFKA_SASL_PASSWORD` | _(none)_ |
 
-### RabbitMQ
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--rabbitmq-url` | `http://localhost:15672` | RabbitMQ Management API URL |
-| `--rabbitmq-user` | `guest` | RabbitMQ username |
-| `--rabbitmq-pass` | `guest` | RabbitMQ password |
-
-### Kafka
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--kafka-brokers` | `localhost:9092` | Comma-separated broker addresses |
-| `--kafka-client-id` | `queue-pilot` | Kafka client ID |
-| `--kafka-sasl-mechanism` | _(none)_ | SASL mechanism: `plain`, `scram-sha-256`, `scram-sha-512` |
-| `--kafka-sasl-username` | _(none)_ | SASL username |
-| `--kafka-sasl-password` | _(none)_ | SASL password |
-
-## Environment Variables
-
-Connection settings can also be configured via environment variables. CLI arguments take priority over environment variables, which take priority over defaults.
-
-### RabbitMQ
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RABBITMQ_URL` | `http://localhost:15672` | RabbitMQ Management API URL |
-| `RABBITMQ_USER` | `guest` | RabbitMQ username |
-| `RABBITMQ_PASS` | `guest` | RabbitMQ password |
-
-### Kafka
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `KAFKA_BROKERS` | `localhost:9092` | Comma-separated broker addresses |
-| `KAFKA_CLIENT_ID` | `queue-pilot` | Kafka client ID |
-| `KAFKA_SASL_MECHANISM` | _(none)_ | SASL mechanism |
-| `KAFKA_SASL_USERNAME` | _(none)_ | SASL username |
-| `KAFKA_SASL_PASSWORD` | _(none)_ | SASL password |
-
-This is useful with MCP client `env` blocks to avoid exposing credentials in `ps` output:
-
-```json
-{
-  "mcpServers": {
-    "queue-pilot": {
-      "command": "npx",
-      "args": ["-y", "queue-pilot", "--schemas", "/absolute/path/to/your/schemas"],
-      "env": {
-        "RABBITMQ_URL": "http://localhost:15672",
-        "RABBITMQ_USER": "admin",
-        "RABBITMQ_PASS": "secret"
-      }
-    }
-  }
-}
-```
+Use environment variables in MCP client `env` blocks to avoid exposing credentials in `ps` output.
 
 ## Development
 
