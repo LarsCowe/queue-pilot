@@ -1,0 +1,99 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.LarsCowe/queue-pilot",
+  "title": "Queue Pilot",
+  "description": "MCP server for RabbitMQ and Kafka message inspection with JSON Schema validation",
+  "version": "0.5.1",
+  "websiteUrl": "https://github.com/LarsCowe/queue-pilot#readme",
+  "repository": {
+    "url": "https://github.com/LarsCowe/queue-pilot",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "queue-pilot",
+      "version": "0.5.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--schemas",
+          "valueHint": "filepath",
+          "isRequired": true,
+          "description": "Path to directory containing JSON Schema files"
+        },
+        {
+          "type": "named",
+          "name": "--broker",
+          "valueHint": "string",
+          "isRequired": false,
+          "description": "Broker type: rabbitmq or kafka (default: rabbitmq)"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "RABBITMQ_URL",
+          "description": "RabbitMQ Management API URL",
+          "isRequired": false,
+          "format": "string",
+          "default": "http://localhost:15672"
+        },
+        {
+          "name": "RABBITMQ_USER",
+          "description": "RabbitMQ username",
+          "isRequired": false,
+          "format": "string",
+          "default": "guest",
+          "isSecret": true
+        },
+        {
+          "name": "RABBITMQ_PASS",
+          "description": "RabbitMQ password",
+          "isRequired": false,
+          "format": "string",
+          "default": "guest",
+          "isSecret": true
+        },
+        {
+          "name": "KAFKA_BROKERS",
+          "description": "Comma-separated Kafka broker addresses",
+          "isRequired": false,
+          "format": "string",
+          "default": "localhost:9092"
+        },
+        {
+          "name": "KAFKA_CLIENT_ID",
+          "description": "Kafka client ID",
+          "isRequired": false,
+          "format": "string",
+          "default": "queue-pilot"
+        },
+        {
+          "name": "KAFKA_SASL_MECHANISM",
+          "description": "SASL mechanism: plain, scram-sha-256, scram-sha-512",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "KAFKA_SASL_USERNAME",
+          "description": "SASL username",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "KAFKA_SASL_PASSWORD",
+          "description": "SASL password",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

@@ -6,3 +6,5 @@ coverage/
 .vitest/
 .claude/
 .mcp.json
+mcp-publisher.exe
+.mcpregistry_*

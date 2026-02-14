@@ -1,6 +1,6 @@
 {
   "name": "queue-pilot",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "MCP server for message queue development — combines RabbitMQ and Kafka message inspection with JSON Schema validation",
   "type": "module",
   "bin": {
@@ -48,7 +48,7 @@
     "json-schema",
     "amqp"
   ],
-  "mcpName": "io.github.larscowe/queue-pilot",
+  "mcpName": "io.github.LarsCowe/queue-pilot",
   "author": "Lars",
   "license": "MIT",
   "engines": {
