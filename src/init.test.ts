@@ -242,13 +242,18 @@ describe("buildConfig", () => {
     expect(config.env!.RABBITMQ_PASS).toBeUndefined();
   });
 
-  it("adds --broker kafka to args when broker is kafka", () => {
+  it("uses --package= syntax for Kafka to install peer dependency", () => {
     const config = buildConfig({
       ...defaultRabbitArgs,
       broker: "kafka",
     });
+    expect(config.args).toContain("--package=@confluentinc/kafka-javascript");
+    expect(config.args).toContain("--package=queue-pilot");
+    expect(config.args).toContain("queue-pilot");
     expect(config.args).toContain("--broker");
     expect(config.args).toContain("kafka");
+    expect(config.args).toContain("--schemas");
+    expect(config.args).toContain("/home/user/schemas");
   });
 
   it("includes Kafka env entries for non-default settings", () => {
@@ -316,10 +321,11 @@ describe("formatConfig", () => {
     expect(parsed.mcpServers).toBeDefined();
   });
 
-  it("formats claude-code output as claude mcp add command", () => {
+  it("formats claude-code output as claude mcp add command with npx after --", () => {
     const output = formatConfig(baseConfig, "claude-code");
     expect(output).toContain("claude mcp add");
     expect(output).toContain("queue-pilot");
+    expect(output).toContain("-- npx");
     expect(output).toContain("--schemas");
   });
 
@@ -388,6 +394,25 @@ describe("formatConfig", () => {
     const output = formatConfig(config, "claude-code");
     expect(output).toContain("RABBITMQ_USER=admin");
     expect(output).not.toContain("'admin'");
+  });
+
+  it("formats Kafka + claude-code output with npx and --package= args", () => {
+    const kafkaConfig = {
+      command: "npx" as const,
+      args: [
+        "-y",
+        "--package=@confluentinc/kafka-javascript",
+        "--package=queue-pilot",
+        "queue-pilot",
+        "--schemas", "/home/user/schemas",
+        "--broker", "kafka",
+      ],
+    };
+    const output = formatConfig(kafkaConfig, "claude-code");
+    expect(output).toContain("-- npx");
+    expect(output).toContain("--package=@confluentinc/kafka-javascript");
+    expect(output).toContain("--package=queue-pilot");
+    expect(output).toContain("--broker kafka");
   });
 
   it("does not alter paths in JSON config formats", () => {

@@ -258,7 +258,14 @@ export function buildConfig(args: InitArgs): McpConfig {
   };
 
   if (args.broker === "kafka") {
-    config.args.push("--broker", "kafka");
+    config.args = [
+      "-y",
+      "--package=@confluentinc/kafka-javascript",
+      "--package=queue-pilot",
+      "queue-pilot",
+      "--schemas", args.schemas,
+      "--broker", "kafka",
+    ];
   }
 
   const env: Record<string, string> = {};
@@ -308,6 +315,7 @@ export function formatConfig(config: McpConfig, client: ClientFormat): string {
     }
     parts.push("queue-pilot");
     parts.push("--");
+    parts.push(config.command);
     for (const arg of config.args) {
       parts.push(shellQuote(arg.replace(/\\/g, "/")));
     }
