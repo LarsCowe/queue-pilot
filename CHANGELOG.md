@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-02-14
+
+### Fixed
+- `init` output now includes `npx` command (was missing, producing broken configs)
+- `init --broker kafka` generates `--package=@confluentinc/kafka-javascript` in configs for all clients (replaces manual workaround from 0.5.2)
+
+### Changed
+- README simplified: consolidated Quick Start to one init command, merged CLI/env config into single table, collapsed MCP reference sections
+- Removed Kafka npx `[!IMPORTANT]` callout (init handles this automatically now)
+
 ## [0.5.2] — 2026-02-14
 
 ### Fixed
@@ -176,7 +186,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - `list_exchanges`, `list_bindings`
 - `list_schemas`, `get_schema`, `validate_message`
 
-[Unreleased]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/LarsCowe/queue-pilot/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/LarsCowe/queue-pilot/compare/v0.4.0...v0.5.0
