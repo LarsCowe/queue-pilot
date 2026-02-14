@@ -1,7 +1,7 @@
 {
   "name": "queue-pilot",
-  "version": "0.4.0",
-  "description": "MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation",
+  "version": "0.5.0",
+  "description": "MCP server for message queue development — combines RabbitMQ and Kafka message inspection with JSON Schema validation",
   "type": "module",
   "bin": {
     "queue-pilot": "dist/index.js"
@@ -40,6 +40,7 @@
   "keywords": [
     "mcp",
     "rabbitmq",
+    "kafka",
     "message-queue",
     "schema-validation",
     "json-schema"
@@ -54,6 +55,14 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@confluentinc/kafka-javascript": "^1.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@confluentinc/kafka-javascript": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.19.11",

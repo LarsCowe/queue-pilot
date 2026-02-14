@@ -12,6 +12,11 @@ describe("parseInitArgs", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let stderrSpy: ReturnType<typeof vi.spyOn>;
   const savedEnv: Record<string, string | undefined> = {};
+  const ENV_KEYS = [
+    "RABBITMQ_URL", "RABBITMQ_USER", "RABBITMQ_PASS",
+    "KAFKA_BROKERS", "KAFKA_CLIENT_ID",
+    "KAFKA_SASL_MECHANISM", "KAFKA_SASL_USERNAME", "KAFKA_SASL_PASSWORD",
+  ];
 
   beforeEach(() => {
     stderrSpy = vi
@@ -24,17 +29,15 @@ describe("parseInitArgs", () => {
           throw new Error("process.exit");
         }) as unknown as (code?: number) => never,
       );
-    savedEnv.RABBITMQ_URL = process.env.RABBITMQ_URL;
-    savedEnv.RABBITMQ_USER = process.env.RABBITMQ_USER;
-    savedEnv.RABBITMQ_PASS = process.env.RABBITMQ_PASS;
-    delete process.env.RABBITMQ_URL;
-    delete process.env.RABBITMQ_USER;
-    delete process.env.RABBITMQ_PASS;
+    for (const key of ENV_KEYS) {
+      savedEnv[key] = process.env[key];
+      delete process.env[key];
+    }
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    for (const key of Object.keys(savedEnv)) {
+    for (const key of ENV_KEYS) {
       if (savedEnv[key] !== undefined) {
         process.env[key] = savedEnv[key];
       } else {
@@ -53,6 +56,9 @@ describe("parseInitArgs", () => {
     expect(result.rabbitmqUrl).toBe("http://localhost:15672");
     expect(result.rabbitmqUser).toBe("guest");
     expect(result.rabbitmqPass).toBe("guest");
+    expect(result.kafkaBrokers).toBe("localhost:9092");
+    expect(result.kafkaClientId).toBe("queue-pilot");
+    expect(result.kafkaSaslMechanism).toBe("");
   });
 
   it("resolves relative --schemas path to absolute", () => {
@@ -118,8 +124,35 @@ describe("parseInitArgs", () => {
   it("parses --broker flag", () => {
     vi.restoreAllMocks();
     const absPath = path.resolve("/tmp/schemas");
-    const result = parseInitArgs(["--schemas", absPath, "--broker", "rabbitmq"]);
-    expect(result.broker).toBe("rabbitmq");
+    const result = parseInitArgs(["--schemas", absPath, "--broker", "kafka"]);
+    expect(result.broker).toBe("kafka");
+  });
+
+  it("parses Kafka CLI args", () => {
+    vi.restoreAllMocks();
+    const absPath = path.resolve("/tmp/schemas");
+    const result = parseInitArgs([
+      "--schemas", absPath,
+      "--broker", "kafka",
+      "--kafka-brokers", "kafka1:9092,kafka2:9092",
+      "--kafka-client-id", "my-app",
+      "--kafka-sasl-mechanism", "plain",
+      "--kafka-sasl-username", "admin",
+      "--kafka-sasl-password", "secret",
+    ]);
+    expect(result.kafkaBrokers).toBe("kafka1:9092,kafka2:9092");
+    expect(result.kafkaClientId).toBe("my-app");
+    expect(result.kafkaSaslMechanism).toBe("plain");
+    expect(result.kafkaSaslUsername).toBe("admin");
+    expect(result.kafkaSaslPassword).toBe("secret");
+  });
+
+  it("uses KAFKA_BROKERS env var as fallback", () => {
+    vi.restoreAllMocks();
+    process.env.KAFKA_BROKERS = "env-kafka:9092";
+    const absPath = path.resolve("/tmp/schemas");
+    const result = parseInitArgs(["--schemas", absPath]);
+    expect(result.kafkaBrokers).toBe("env-kafka:9092");
   });
 
   it("prints help and exits 0 for --help", () => {
@@ -129,19 +162,27 @@ describe("parseInitArgs", () => {
     expect(output).toContain("--schemas");
     expect(output).toContain("--client");
     expect(output).toContain("--broker");
+    expect(output).toContain("--kafka-brokers");
   });
 });
 
 describe("buildConfig", () => {
+  const defaultRabbitArgs = {
+    schemas: "/home/user/schemas",
+    client: "generic" as const,
+    broker: "rabbitmq",
+    rabbitmqUrl: "http://localhost:15672",
+    rabbitmqUser: "guest",
+    rabbitmqPass: "guest",
+    kafkaBrokers: "localhost:9092",
+    kafkaClientId: "queue-pilot",
+    kafkaSaslMechanism: "",
+    kafkaSaslUsername: "",
+    kafkaSaslPassword: "",
+  };
+
   it("returns npx command with schema path", () => {
-    const config = buildConfig({
-      schemas: "/home/user/schemas",
-      client: "generic",
-      broker: "rabbitmq",
-      rabbitmqUrl: "http://localhost:15672",
-      rabbitmqUser: "guest",
-      rabbitmqPass: "guest",
-    });
+    const config = buildConfig(defaultRabbitArgs);
     expect(config.command).toBe("npx");
     expect(config.args).toContain("-y");
     expect(config.args).toContain("queue-pilot");
@@ -150,22 +191,13 @@ describe("buildConfig", () => {
   });
 
   it("omits env when all values are defaults", () => {
-    const config = buildConfig({
-      schemas: "/schemas",
-      client: "generic",
-      broker: "rabbitmq",
-      rabbitmqUrl: "http://localhost:15672",
-      rabbitmqUser: "guest",
-      rabbitmqPass: "guest",
-    });
+    const config = buildConfig(defaultRabbitArgs);
     expect(config.env).toBeUndefined();
   });
 
   it("includes env entries for non-default RabbitMQ settings", () => {
     const config = buildConfig({
-      schemas: "/schemas",
-      client: "generic",
-      broker: "rabbitmq",
+      ...defaultRabbitArgs,
       rabbitmqUrl: "http://production:15672",
       rabbitmqUser: "admin",
       rabbitmqPass: "secret",
@@ -178,17 +210,55 @@ describe("buildConfig", () => {
 
   it("only includes non-default env entries", () => {
     const config = buildConfig({
-      schemas: "/schemas",
-      client: "generic",
-      broker: "rabbitmq",
-      rabbitmqUrl: "http://localhost:15672",
+      ...defaultRabbitArgs,
       rabbitmqUser: "admin",
-      rabbitmqPass: "guest",
     });
     expect(config.env).toBeDefined();
     expect(config.env!.RABBITMQ_USER).toBe("admin");
     expect(config.env!.RABBITMQ_URL).toBeUndefined();
     expect(config.env!.RABBITMQ_PASS).toBeUndefined();
+  });
+
+  it("adds --broker kafka to args when broker is kafka", () => {
+    const config = buildConfig({
+      ...defaultRabbitArgs,
+      broker: "kafka",
+    });
+    expect(config.args).toContain("--broker");
+    expect(config.args).toContain("kafka");
+  });
+
+  it("includes Kafka env entries for non-default settings", () => {
+    const config = buildConfig({
+      ...defaultRabbitArgs,
+      broker: "kafka",
+      kafkaBrokers: "prod-kafka:9092",
+      kafkaSaslMechanism: "plain",
+      kafkaSaslUsername: "admin",
+      kafkaSaslPassword: "secret",
+    });
+    expect(config.env).toBeDefined();
+    expect(config.env!.KAFKA_BROKERS).toBe("prod-kafka:9092");
+    expect(config.env!.KAFKA_SASL_MECHANISM).toBe("plain");
+    expect(config.env!.KAFKA_SASL_USERNAME).toBe("admin");
+    expect(config.env!.KAFKA_SASL_PASSWORD).toBe("secret");
+  });
+
+  it("omits Kafka env when all values are defaults", () => {
+    const config = buildConfig({
+      ...defaultRabbitArgs,
+      broker: "kafka",
+    });
+    expect(config.env).toBeUndefined();
+  });
+
+  it("does not include RabbitMQ env when broker is kafka", () => {
+    const config = buildConfig({
+      ...defaultRabbitArgs,
+      broker: "kafka",
+      rabbitmqUser: "admin",
+    });
+    expect(config.env).toBeUndefined();
   });
 });
 
@@ -319,5 +389,13 @@ describe("handleInit", () => {
     handleInit(["--schemas", absPath, "--client", "claude-code"]);
     const stdout = stdoutSpy.mock.calls.map((c) => c[0]).join("");
     expect(stdout).toContain("claude mcp add");
+  });
+
+  it("includes --broker kafka in output for Kafka broker", () => {
+    const absPath = path.resolve("/tmp/schemas");
+    handleInit(["--schemas", absPath, "--broker", "kafka"]);
+    const stdout = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    expect(stdout).toContain("--broker");
+    expect(stdout).toContain("kafka");
   });
 });

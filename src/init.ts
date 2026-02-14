@@ -24,6 +24,11 @@ export interface InitArgs {
   rabbitmqUrl: string;
   rabbitmqUser: string;
   rabbitmqPass: string;
+  kafkaBrokers: string;
+  kafkaClientId: string;
+  kafkaSaslMechanism: string;
+  kafkaSaslUsername: string;
+  kafkaSaslPassword: string;
 }
 
 export interface McpConfig {
@@ -37,19 +42,33 @@ const INIT_HELP_TEXT = `queue-pilot init — Generate MCP client configuration
 Usage: queue-pilot init --schemas <directory> [options]
 
 Options:
-  --schemas <dir>        Directory containing JSON Schema files (required)
-  --client <name>        MCP client format (default: generic)
-                         Supported: ${SUPPORTED_CLIENTS.join(", ")}
-  --broker <type>        Broker type (default: rabbitmq)
-  --rabbitmq-url <url>   RabbitMQ Management API URL (default: http://localhost:15672)
-  --rabbitmq-user <user> RabbitMQ username (default: guest)
-  --rabbitmq-pass <pass> RabbitMQ password (default: guest)
-  --help                 Show this help message
+  --schemas <dir>               Directory containing JSON Schema files (required)
+  --client <name>               MCP client format (default: generic)
+                                Supported: ${SUPPORTED_CLIENTS.join(", ")}
+  --broker <type>               Broker type: rabbitmq, kafka (default: rabbitmq)
+  --help                        Show this help message
+
+RabbitMQ options:
+  --rabbitmq-url <url>          RabbitMQ Management API URL (default: http://localhost:15672)
+  --rabbitmq-user <user>        RabbitMQ username (default: guest)
+  --rabbitmq-pass <pass>        RabbitMQ password (default: guest)
+
+Kafka options:
+  --kafka-brokers <list>        Comma-separated broker addresses (default: localhost:9092)
+  --kafka-client-id <id>        Kafka client ID (default: queue-pilot)
+  --kafka-sasl-mechanism <mech> SASL mechanism: plain, scram-sha-256, scram-sha-512
+  --kafka-sasl-username <user>  SASL username
+  --kafka-sasl-password <pass>  SASL password
 
 Environment variables (used as fallback when CLI args are not provided):
-  RABBITMQ_URL              RabbitMQ Management API URL
-  RABBITMQ_USER             RabbitMQ username
-  RABBITMQ_PASS             RabbitMQ password
+  RABBITMQ_URL                  RabbitMQ Management API URL
+  RABBITMQ_USER                 RabbitMQ username
+  RABBITMQ_PASS                 RabbitMQ password
+  KAFKA_BROKERS                 Comma-separated Kafka broker addresses
+  KAFKA_CLIENT_ID               Kafka client ID
+  KAFKA_SASL_MECHANISM          SASL mechanism
+  KAFKA_SASL_USERNAME           SASL username
+  KAFKA_SASL_PASSWORD           SASL password
 `;
 
 export function parseInitArgs(argv: string[]): InitArgs {
@@ -124,6 +143,51 @@ export function parseInitArgs(argv: string[]): InitArgs {
         args.rabbitmqPass = value;
         break;
       }
+      case "--kafka-brokers": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --kafka-brokers requires a value\n");
+          process.exit(1);
+        }
+        args.kafkaBrokers = value;
+        break;
+      }
+      case "--kafka-client-id": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --kafka-client-id requires a value\n");
+          process.exit(1);
+        }
+        args.kafkaClientId = value;
+        break;
+      }
+      case "--kafka-sasl-mechanism": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --kafka-sasl-mechanism requires a value\n");
+          process.exit(1);
+        }
+        args.kafkaSaslMechanism = value;
+        break;
+      }
+      case "--kafka-sasl-username": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --kafka-sasl-username requires a value\n");
+          process.exit(1);
+        }
+        args.kafkaSaslUsername = value;
+        break;
+      }
+      case "--kafka-sasl-password": {
+        const value = argv[++i];
+        if (!value || value.startsWith("--")) {
+          process.stderr.write("Error: --kafka-sasl-password requires a value\n");
+          process.exit(1);
+        }
+        args.kafkaSaslPassword = value;
+        break;
+      }
     }
   }
 
@@ -146,6 +210,16 @@ export function parseInitArgs(argv: string[]): InitArgs {
       args.rabbitmqUser ?? process.env.RABBITMQ_USER ?? "guest",
     rabbitmqPass:
       args.rabbitmqPass ?? process.env.RABBITMQ_PASS ?? "guest",
+    kafkaBrokers:
+      args.kafkaBrokers ?? process.env.KAFKA_BROKERS ?? "localhost:9092",
+    kafkaClientId:
+      args.kafkaClientId ?? process.env.KAFKA_CLIENT_ID ?? "queue-pilot",
+    kafkaSaslMechanism:
+      args.kafkaSaslMechanism ?? process.env.KAFKA_SASL_MECHANISM ?? "",
+    kafkaSaslUsername:
+      args.kafkaSaslUsername ?? process.env.KAFKA_SASL_USERNAME ?? "",
+    kafkaSaslPassword:
+      args.kafkaSaslPassword ?? process.env.KAFKA_SASL_PASSWORD ?? "",
   };
 }
 
@@ -155,15 +229,38 @@ export function buildConfig(args: InitArgs): McpConfig {
     args: ["-y", "queue-pilot", "--schemas", args.schemas],
   };
 
+  if (args.broker === "kafka") {
+    config.args.push("--broker", "kafka");
+  }
+
   const env: Record<string, string> = {};
-  if (args.rabbitmqUrl !== "http://localhost:15672") {
-    env.RABBITMQ_URL = args.rabbitmqUrl;
-  }
-  if (args.rabbitmqUser !== "guest") {
-    env.RABBITMQ_USER = args.rabbitmqUser;
-  }
-  if (args.rabbitmqPass !== "guest") {
-    env.RABBITMQ_PASS = args.rabbitmqPass;
+
+  if (args.broker === "kafka") {
+    if (args.kafkaBrokers !== "localhost:9092") {
+      env.KAFKA_BROKERS = args.kafkaBrokers;
+    }
+    if (args.kafkaClientId !== "queue-pilot") {
+      env.KAFKA_CLIENT_ID = args.kafkaClientId;
+    }
+    if (args.kafkaSaslMechanism) {
+      env.KAFKA_SASL_MECHANISM = args.kafkaSaslMechanism;
+    }
+    if (args.kafkaSaslUsername) {
+      env.KAFKA_SASL_USERNAME = args.kafkaSaslUsername;
+    }
+    if (args.kafkaSaslPassword) {
+      env.KAFKA_SASL_PASSWORD = args.kafkaSaslPassword;
+    }
+  } else {
+    if (args.rabbitmqUrl !== "http://localhost:15672") {
+      env.RABBITMQ_URL = args.rabbitmqUrl;
+    }
+    if (args.rabbitmqUser !== "guest") {
+      env.RABBITMQ_USER = args.rabbitmqUser;
+    }
+    if (args.rabbitmqPass !== "guest") {
+      env.RABBITMQ_PASS = args.rabbitmqPass;
+    }
   }
 
   if (Object.keys(env).length > 0) {

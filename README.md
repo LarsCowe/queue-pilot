@@ -3,23 +3,26 @@
 [![npm version](https://img.shields.io/npm/v/queue-pilot)](https://www.npmjs.com/package/queue-pilot)
 [![license](https://img.shields.io/npm/l/queue-pilot)](LICENSE)
 
-MCP server for message queue development — combines RabbitMQ message inspection with JSON Schema validation.
+MCP server for message queue development — combines message inspection with JSON Schema validation. Supports **RabbitMQ** and **Kafka**.
 
-Designed for integration projects where multiple teams communicate via RabbitMQ: inspect queues, view messages, and validate payloads against agreed-upon schemas — all from your AI assistant.
+Designed for integration projects where multiple teams communicate via message brokers: inspect queues/topics, view messages, and validate payloads against agreed-upon schemas — all from your AI assistant.
 
 ## Features
 
-- **Message Inspection** — Browse queues, peek at messages without consuming them
+- **Multi-broker support** — RabbitMQ and Apache Kafka via a unified adapter interface
+- **Message Inspection** — Browse queues/topics, peek at messages without consuming them
 - **Schema Validation** — Validate message payloads against JSON Schema definitions
 - **Combined Inspection** — `inspect_queue` peeks messages AND validates each against its schema
 - **Validated Publishing** — `publish_message` validates against a schema before sending — invalid messages never hit the broker
-- **Queue Management** — Create queues, bindings, and purge messages for dev/test workflows
-- **Broker Info** — List exchanges and bindings to understand message routing
+- **Queue Management** — Create queues/topics, bindings, and purge messages for dev/test workflows
+- **Broker Info** — List exchanges, bindings, consumer groups, and partition details
 
 ## Prerequisites
 
 - **Node.js >= 22** — Required runtime ([check with `node --version`](https://nodejs.org/))
-- **RabbitMQ** with the [management plugin](https://www.rabbitmq.com/docs/management) enabled (HTTP API on port 15672)
+- **A message broker:**
+  - **RabbitMQ** with the [management plugin](https://www.rabbitmq.com/docs/management) enabled (HTTP API on port 15672), or
+  - **Apache Kafka** (requires `@confluentinc/kafka-javascript` — install separately: `npm install @confluentinc/kafka-javascript`)
 - **An MCP-compatible client** — Claude Code, Claude Desktop, Cursor, VS Code (Copilot), Windsurf, etc.
 
 ## Quick Start
@@ -51,7 +54,11 @@ Create JSON Schema files in a directory:
 Generate the config for your client with `queue-pilot init`:
 
 ```bash
+# RabbitMQ (default)
 npx queue-pilot init --schemas /absolute/path/to/your/schemas
+
+# Kafka
+npx queue-pilot init --schemas /absolute/path/to/your/schemas --broker kafka
 ```
 
 For a specific client, use `--client`:
@@ -73,10 +80,14 @@ npx queue-pilot init --schemas ./schemas --client claude-desktop
 npx queue-pilot init --schemas ./schemas --client windsurf
 ```
 
-Non-default RabbitMQ settings are included as environment variables (not CLI args) to avoid exposing credentials in `ps` output:
+Non-default settings are included as environment variables (not CLI args) to avoid exposing credentials in `ps` output:
 
 ```bash
+# RabbitMQ with custom credentials
 npx queue-pilot init --schemas ./schemas --rabbitmq-user admin --rabbitmq-pass secret
+
+# Kafka with SASL authentication
+npx queue-pilot init --schemas ./schemas --broker kafka --kafka-brokers kafka:9092 --kafka-sasl-mechanism plain --kafka-sasl-username admin --kafka-sasl-password secret
 ```
 
 > **Windows note:** If `npx` fails to resolve the package, try `cmd /c npx queue-pilot init ...`.
@@ -85,6 +96,8 @@ npx queue-pilot init --schemas ./schemas --rabbitmq-user admin --rabbitmq-pass s
 <summary>Manual configuration (without init)</summary>
 
 Add the following server configuration to your MCP client:
+
+**RabbitMQ:**
 
 ```json
 {
@@ -96,6 +109,27 @@ Add the following server configuration to your MCP client:
         "queue-pilot",
         "--schemas", "/absolute/path/to/your/schemas"
       ]
+    }
+  }
+}
+```
+
+**Kafka:**
+
+```json
+{
+  "mcpServers": {
+    "queue-pilot": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "queue-pilot",
+        "--schemas", "/absolute/path/to/your/schemas",
+        "--broker", "kafka"
+      ],
+      "env": {
+        "KAFKA_BROKERS": "localhost:9092"
+      }
     }
   }
 }
@@ -146,39 +180,50 @@ Ask your assistant things like:
 - "Publish an order.created event to the events exchange"
 - "Create a queue called dead-letters and bind it to the events exchange"
 - "Purge all messages from the orders queue"
+- "List all consumer groups" (Kafka)
+- "Show me the partition details for the orders topic" (Kafka)
 
 ## MCP Tools
 
-### Read
+### Universal tools (all brokers)
 
 | Tool | Description |
 |------|-------------|
 | `list_schemas` | List all loaded message schemas |
 | `get_schema` | Get the full definition of a specific schema |
 | `validate_message` | Validate a JSON message against a schema |
-| `list_queues` | List all RabbitMQ queues with message counts |
-| `peek_messages` | View messages in a queue without consuming them |
+| `list_queues` | List all queues/topics with message counts |
+| `peek_messages` | View messages in a queue/topic without consuming them |
 | `inspect_queue` | Peek messages + validate each against its schema |
-| `list_exchanges` | List all RabbitMQ exchanges |
-| `list_bindings` | List bindings between exchanges and queues |
-| `get_overview` | Get RabbitMQ cluster overview: version info, message rates, queue totals, and object counts |
-| `check_health` | Check RabbitMQ broker health status |
-| `get_queue` | Get detailed information about a specific queue |
-| `list_consumers` | List all consumers connected to queues |
-| `list_connections` | List all client connections to the broker |
+| `get_overview` | Get broker cluster overview |
+| `check_health` | Check broker health status |
+| `get_queue` | Get detailed information about a specific queue/topic |
+| `list_consumers` | List consumers (RabbitMQ) or consumer groups (Kafka) |
+| `publish_message` | Publish a message with optional schema validation gate |
+| `purge_queue` | Remove all messages from a queue/topic |
+| `create_queue` | Create a new queue/topic |
+| `delete_queue` | Delete a queue/topic |
 
-### Write
+### RabbitMQ-specific tools
 
 | Tool | Description |
 |------|-------------|
-| `publish_message` | Publish a message to an exchange with optional schema validation gate |
-| `purge_queue` | Remove all messages from a queue (returns count purged) |
-| `create_queue` | Create a new queue (idempotent if settings match) |
-| `create_binding` | Bind a queue to an exchange with a routing key |
-| `create_exchange` | Create a new exchange (idempotent if settings match) |
-| `delete_queue` | Delete a queue |
+| `list_exchanges` | List all RabbitMQ exchanges |
+| `create_exchange` | Create a new exchange |
 | `delete_exchange` | Delete an exchange |
-| `delete_binding` | Delete a binding between an exchange and a queue |
+| `list_bindings` | List bindings between exchanges and queues |
+| `create_binding` | Bind a queue to an exchange with a routing key |
+| `delete_binding` | Delete a binding |
+| `list_connections` | List all client connections to the broker |
+
+### Kafka-specific tools
+
+| Tool | Description |
+|------|-------------|
+| `list_consumer_groups` | List all consumer groups with their state |
+| `describe_consumer_group` | Show members, assignments, and state of a consumer group |
+| `list_partitions` | Show partition details for a topic (leader, replicas, ISR) |
+| `get_offsets` | Show earliest/latest offsets per partition |
 
 ## MCP Prompts
 
@@ -204,7 +249,7 @@ Clients that support MCP resources can read schema definitions directly without 
 
 Schemas follow JSON Schema draft-07 with a few conventions:
 
-- `$id` — Message type identifier (matches the `type` property on RabbitMQ messages)
+- `$id` — Message type identifier (matches the `type` property on messages)
 - `version` — Schema version (custom field, not validated by JSON Schema)
 - Standard JSON Schema validation including `required`, `properties`, `format` etc.
 
@@ -212,22 +257,52 @@ Schema matching: when inspecting a queue, the message's `type` property is used 
 
 ## CLI Arguments
 
+### General
+
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--schemas` | (required) | Path to directory containing JSON Schema files |
+| `--broker` | `rabbitmq` | Broker type: `rabbitmq` or `kafka` |
+
+### RabbitMQ
+
+| Argument | Default | Description |
+|----------|---------|-------------|
 | `--rabbitmq-url` | `http://localhost:15672` | RabbitMQ Management API URL |
 | `--rabbitmq-user` | `guest` | RabbitMQ username |
 | `--rabbitmq-pass` | `guest` | RabbitMQ password |
 
+### Kafka
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--kafka-brokers` | `localhost:9092` | Comma-separated broker addresses |
+| `--kafka-client-id` | `queue-pilot` | Kafka client ID |
+| `--kafka-sasl-mechanism` | _(none)_ | SASL mechanism: `plain`, `scram-sha-256`, `scram-sha-512` |
+| `--kafka-sasl-username` | _(none)_ | SASL username |
+| `--kafka-sasl-password` | _(none)_ | SASL password |
+
 ## Environment Variables
 
-RabbitMQ connection settings can also be configured via environment variables. CLI arguments take priority over environment variables, which take priority over defaults.
+Connection settings can also be configured via environment variables. CLI arguments take priority over environment variables, which take priority over defaults.
+
+### RabbitMQ
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RABBITMQ_URL` | `http://localhost:15672` | RabbitMQ Management API URL |
 | `RABBITMQ_USER` | `guest` | RabbitMQ username |
 | `RABBITMQ_PASS` | `guest` | RabbitMQ password |
+
+### Kafka
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAFKA_BROKERS` | `localhost:9092` | Comma-separated broker addresses |
+| `KAFKA_CLIENT_ID` | `queue-pilot` | Kafka client ID |
+| `KAFKA_SASL_MECHANISM` | _(none)_ | SASL mechanism |
+| `KAFKA_SASL_USERNAME` | _(none)_ | SASL username |
+| `KAFKA_SASL_PASSWORD` | _(none)_ | SASL password |
 
 This is useful with MCP client `env` blocks to avoid exposing credentials in `ps` output:
 
@@ -268,7 +343,8 @@ npm run test:integration
 - [Ajv](https://ajv.js.org/) for JSON Schema validation
 - [Zod](https://zod.dev/) for MCP tool parameter definitions
 - [Vitest](https://vitest.dev/) for testing
-- RabbitMQ Management HTTP API (no additional broker dependencies)
+- RabbitMQ Management HTTP API
+- [Confluent Kafka JavaScript](https://github.com/confluentinc/confluent-kafka-javascript) (optional, for Kafka support)
 
 ## License
 
