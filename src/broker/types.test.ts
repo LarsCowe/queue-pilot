@@ -27,6 +27,7 @@ function createBaseAdapter(): BrokerAdapter {
     peekMessages: async () => [],
     publishMessage: async () => ({ published: true, routed: true }),
     checkHealth: async () => ({ status: "ok" }),
+    disconnect: async () => {},
   };
 }
 

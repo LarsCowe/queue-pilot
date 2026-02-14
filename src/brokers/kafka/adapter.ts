@@ -114,4 +114,8 @@ export class KafkaAdapter
     const groups = await this.client.listConsumerGroups();
     return groups as unknown as Record<string, unknown>[];
   }
+
+  async disconnect(): Promise<void> {
+    await this.client.disconnect();
+  }
 }

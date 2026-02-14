@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { loadSchemas } from "./loader.js";
@@ -234,6 +234,44 @@ describe("loadSchemas", () => {
     await expect(loadSchemas(nonExistentDir)).rejects.toThrow(
       `Schema directory not found: ${nonExistentDir}`,
     );
+  });
+
+  it("skips symlinked files pointing outside the schema directory", async () => {
+    const outsideDir = mkdtempSync(join(tmpdir(), "qp-outside-"));
+    const escapedSchema = {
+      $id: "escaped.event",
+      $schema: "http://json-schema.org/draft-07/schema#",
+      title: "Escaped Event",
+      description: "Schema outside the trusted directory",
+      version: "1.0.0",
+      type: "object",
+    };
+    writeFileSync(
+      join(outsideDir, "escaped.json"),
+      JSON.stringify(escapedSchema, null, 2),
+    );
+
+    try {
+      symlinkSync(
+        join(outsideDir, "escaped.json"),
+        join(tempDir, "escaped.json"),
+      );
+    } catch {
+      // Symlink creation may require elevated privileges on Windows
+      rmSync(outsideDir, { recursive: true, force: true });
+      return;
+    }
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const result = await loadSchemas(tempDir);
+
+    expect(result).toEqual([]);
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining("path outside schema directory"),
+    );
+    stderrSpy.mockRestore();
+    rmSync(outsideDir, { recursive: true, force: true });
   });
 
   it("loads schemas from subdirectories recursively", async () => {

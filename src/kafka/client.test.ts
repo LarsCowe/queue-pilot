@@ -184,6 +184,32 @@ describe("KafkaClient", () => {
       expect(messages[0].headers).toEqual({ source: "test" });
     });
 
+    it("returns partial results when consumption times out", async () => {
+      mockConsumer.run.mockImplementationOnce(
+        async ({ eachMessage }: { eachMessage: (payload: Record<string, unknown>) => Promise<void> }) => {
+          await eachMessage({
+            topic: "orders",
+            partition: 0,
+            message: {
+              key: Buffer.from("ORD-001"),
+              value: Buffer.from('{"orderId":"ORD-001"}'),
+              headers: {},
+              timestamp: "1700000000000",
+              offset: "0",
+            },
+          });
+          // Simulate waiting for more messages that never arrive
+          await new Promise(() => {});
+        },
+      );
+
+      const messages = await client.peekMessages("orders", 5, 50);
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0].key).toBe("ORD-001");
+      expect(mockConsumer.disconnect).toHaveBeenCalled();
+    });
+
     it("disconnects consumer and cleans up group after peek", async () => {
       await client.peekMessages("orders", 1);
 

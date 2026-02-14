@@ -310,6 +310,17 @@ describe("KafkaAdapter", () => {
     });
   });
 
+  describe("disconnect", () => {
+    it("delegates to client disconnect", async () => {
+      const client = mockClient();
+      const adapter = new KafkaAdapter(client);
+
+      await adapter.disconnect();
+
+      expect(client.disconnect).toHaveBeenCalled();
+    });
+  });
+
   describe("listConsumers", () => {
     it("returns consumer groups as generic records", async () => {
       const adapter = new KafkaAdapter(mockClient());

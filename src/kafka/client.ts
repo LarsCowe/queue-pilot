@@ -238,7 +238,7 @@ export class KafkaClient {
     });
   }
 
-  async peekMessages(topic: string, count: number): Promise<PeekedMessage[]> {
+  async peekMessages(topic: string, count: number, timeoutMs: number = 5000): Promise<PeekedMessage[]> {
     const kafka = await this.getKafka();
     const groupId = `queue-pilot-peek-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const consumer = kafka.consumer({ groupId });
@@ -248,7 +248,7 @@ export class KafkaClient {
       await consumer.connect();
       await consumer.subscribe({ topic, fromBeginning: true });
 
-      await consumer.run({
+      const consume = consumer.run({
         eachMessage: async ({ topic: msgTopic, partition, message }) => {
           if (messages.length < count) {
             messages.push({
@@ -267,6 +267,12 @@ export class KafkaClient {
           }
         },
       });
+
+      const timeout = new Promise<void>((resolve) => {
+        setTimeout(resolve, timeoutMs);
+      });
+
+      await Promise.race([consume, timeout]);
     } finally {
       await consumer.disconnect();
       try {

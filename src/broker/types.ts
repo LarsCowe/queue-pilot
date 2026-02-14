@@ -63,6 +63,7 @@ export interface BrokerAdapter {
   peekMessages(queue: string, count: number, scope?: string): Promise<BrokerMessage[]>;
   publishMessage(params: PublishParams): Promise<PublishResult>;
   checkHealth(): Promise<BrokerHealthResult>;
+  disconnect(): Promise<void>;
 }
 
 export interface OverviewCapability {

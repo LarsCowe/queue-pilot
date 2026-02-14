@@ -287,6 +287,14 @@ describe("RabbitMQAdapter", () => {
     });
   });
 
+  describe("disconnect", () => {
+    it("resolves without error for stateless HTTP adapter", async () => {
+      const adapter = new RabbitMQAdapter(mockClient());
+
+      await expect(adapter.disconnect()).resolves.toBeUndefined();
+    });
+  });
+
   describe("listConnections", () => {
     it("delegates to client.listConnections", async () => {
       const connections = [{ name: "conn-1", user: "guest" }];

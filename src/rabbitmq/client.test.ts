@@ -510,30 +510,15 @@ describe("RabbitMQClient", () => {
     expect(result).toEqual(overview);
   });
 
-  it("checks health without throwing on 503", async () => {
+  it("checks health via rawRequest and throws on 503", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => ({
-        status: "failed",
-        reason: "There are alarms in effect in the cluster",
-      }),
+      statusText: "Service Unavailable",
+      text: async () => '{"status":"failed","reason":"There are alarms in effect in the cluster"}',
     });
 
-    const result = await client.checkHealth();
-
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://localhost:15672/api/health/checks/alarms",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: expect.stringContaining("Basic"),
-        }),
-      }),
-    );
-    expect(result).toEqual({
-      status: "failed",
-      reason: "There are alarms in effect in the cluster",
-    });
+    await expect(client.checkHealth()).rejects.toThrow("RabbitMQ API error: 503");
   });
 
   it("checks health returns ok for healthy broker", async () => {
@@ -601,6 +586,22 @@ describe("RabbitMQClient", () => {
       expect.any(Object),
     );
     expect(result).toEqual(consumers);
+  });
+
+  it("applies a timeout signal to HTTP requests", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+
+    await client.listQueues("/");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
   it("lists all connections", async () => {

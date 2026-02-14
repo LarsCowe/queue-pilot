@@ -41,6 +41,7 @@ export class RabbitMQClient {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers: { ...this.headers(), ...options?.headers },
+      signal: options?.signal ?? AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
@@ -197,10 +198,7 @@ export class RabbitMQClient {
   }
 
   async checkHealth(): Promise<HealthCheckResponse> {
-    const response = await fetch(`${this.baseUrl}/api/health/checks/alarms`, {
-      headers: this.headers(),
-    });
-    return response.json() as Promise<HealthCheckResponse>;
+    return this.request<HealthCheckResponse>("/api/health/checks/alarms");
   }
 
   async getQueue(vhost: string, queue: string): Promise<QueueDetail> {

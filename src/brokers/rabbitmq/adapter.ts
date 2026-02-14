@@ -138,4 +138,8 @@ export class RabbitMQAdapter
     const result = await this.client.listConnections();
     return result as unknown as Record<string, unknown>[];
   }
+
+  async disconnect(): Promise<void> {
+    // RabbitMQ uses stateless HTTP — no persistent connections to close
+  }
 }
