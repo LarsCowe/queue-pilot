@@ -161,6 +161,11 @@ Ask your assistant things like:
 | `inspect_queue` | Peek messages + validate each against its schema |
 | `list_exchanges` | List all RabbitMQ exchanges |
 | `list_bindings` | List bindings between exchanges and queues |
+| `get_overview` | Get RabbitMQ cluster overview: version info, message rates, queue totals, and object counts |
+| `check_health` | Check RabbitMQ broker health status |
+| `get_queue` | Get detailed information about a specific queue |
+| `list_consumers` | List all consumers connected to queues |
+| `list_connections` | List all client connections to the broker |
 
 ### Write
 
@@ -170,6 +175,10 @@ Ask your assistant things like:
 | `purge_queue` | Remove all messages from a queue (returns count purged) |
 | `create_queue` | Create a new queue (idempotent if settings match) |
 | `create_binding` | Bind a queue to an exchange with a routing key |
+| `create_exchange` | Create a new exchange (idempotent if settings match) |
+| `delete_queue` | Delete a queue |
+| `delete_exchange` | Delete an exchange |
+| `delete_binding` | Delete a binding between an exchange and a queue |
 
 ## MCP Prompts
 
@@ -227,7 +236,7 @@ This is useful with MCP client `env` blocks to avoid exposing credentials in `ps
   "mcpServers": {
     "queue-pilot": {
       "command": "npx",
-      "args": ["queue-pilot", "--schemas", "/absolute/path/to/your/schemas"],
+      "args": ["-y", "queue-pilot", "--schemas", "/absolute/path/to/your/schemas"],
       "env": {
         "RABBITMQ_URL": "http://localhost:15672",
         "RABBITMQ_USER": "admin",
